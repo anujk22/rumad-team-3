@@ -228,6 +228,28 @@ export default function DiscoverScreen() {
           <Text style={styles.dealSubtext}>MATCH WITH 4–6 STUDENTS INSTANTLY</Text>
 
 
+          {/* ── Interests Section ── */}
+          <View style={styles.sectionMarginInterests}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionHeader}>Interests</Text>
+              <TouchableOpacity>
+                <Text style={[styles.seeAllText, { color: C.primary }]}>SEE ALL</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchBarBox}>
+              <Search size={20} color={C.secondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search interests (e.g., Cooking, CS)"
+                placeholderTextColor={C.secondary}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
           {/* ── Browse Suits Section ── */}
           <View style={styles.sectionMargin}>
             <View style={styles.rowBetween}>
@@ -273,10 +295,10 @@ export default function DiscoverScreen() {
             </View>
           </View>
 
-          {/* ── Study Crews Section (Dark Mode Design) ── */}
+          {/* ── Study Crews Section ── */}
           <View style={styles.crewContainer}>
             <View style={styles.crewWatermark}>
-               <GraduationCap size={100} color="#ffffff" opacity={0.03} />
+               <GraduationCap size={100} color={C.primary} opacity={0.05} />
             </View>
             
             <Text style={styles.crewTitle}>Study Crews</Text>
@@ -286,7 +308,7 @@ export default function DiscoverScreen() {
               <TextInput
                 style={styles.crewInput}
                 placeholder="e.g. CS101, PSYCH202"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholderTextColor={C.secondary}
                 value={courseCode}
                 onChangeText={setCourseCode}
                 autoCapitalize="none"
@@ -311,7 +333,7 @@ export default function DiscoverScreen() {
                 <Text style={styles.crewPillLabel}>HIST110</Text>
                 <View style={styles.avatarOverlap}>
                    <View style={styles.miniAvatar}><User size={12} color="#fff" /></View>
-                   <View style={[styles.miniAvatarCount, { marginLeft: -8, backgroundColor: '#3f3f46' }]}><Text style={styles.miniCountText}>+2</Text></View>
+                   <View style={[styles.miniAvatarCount, { marginLeft: -8, backgroundColor: C.outline }]}><Text style={styles.miniCountText}>+2</Text></View>
                 </View>
               </View>
             </ScrollView>
@@ -383,8 +405,12 @@ const styles = StyleSheet.create({
   },
 
   sectionMargin: {
-    marginTop: 48,
+    marginTop: 24, // reduced a bit because of interests layout above
     marginBottom: 24,
+  },
+  sectionMarginInterests: {
+    marginTop: 48,
+    width: '100%',
   },
   rowBetween: {
     flexDirection: 'row',
@@ -404,6 +430,32 @@ const styles = StyleSheet.create({
     color: C.secondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+
+  searchBarBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surfaceContainerLowest,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 54,
+    borderWidth: 1,
+    borderColor: 'rgba(228,190,186,0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: F.body,
+    fontSize: 15,
+    color: C.onSurface,
+    height: '100%',
   },
 
   suitsGrid: {
@@ -438,17 +490,19 @@ const styles = StyleSheet.create({
   },
 
   crewContainer: {
-    backgroundColor: '#18181b', // zinc-900 equivalent
+    backgroundColor: C.surfaceContainerLowest,
     borderRadius: 24,
     padding: 24,
     marginTop: 16,
     position: 'relative',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(228,190,186,0.3)',
   },
   crewWatermark: {
     position: 'absolute',
@@ -458,13 +512,13 @@ const styles = StyleSheet.create({
   crewTitle: {
     fontFamily: F.headlineBase,
     fontSize: 28,
-    color: C.surfaceContainerLowest,
+    color: C.onSurface,
     marginBottom: 8,
   },
   crewBody: {
     fontFamily: F.body,
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    color: C.secondary,
     marginBottom: 24,
   },
   crewInputRow: {
@@ -474,14 +528,16 @@ const styles = StyleSheet.create({
   },
   crewInput: {
     flex: 1,
-    backgroundColor: '#27272a', // zinc-800
-    color: C.surfaceContainerLowest,
+    backgroundColor: C.surfaceContainer,
+    color: C.onSurface,
     fontFamily: F.label,
     fontSize: 14,
     height: 52,
     borderRadius: 12,
     paddingLeft: 16,
     paddingRight: 60,
+    borderWidth: 1,
+    borderColor: 'rgba(228,190,186,0.3)',
   },
   crewSubmitBtn: {
     position: 'absolute',
@@ -500,9 +556,9 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   crewPill: {
-    backgroundColor: 'rgba(39,39,42,0.5)',
+    backgroundColor: C.surfaceContainer,
     borderWidth: 1,
-    borderColor: 'rgba(63,63,70,0.5)',
+    borderColor: 'rgba(228,190,186,0.3)',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -510,7 +566,7 @@ const styles = StyleSheet.create({
   crewPillLabel: {
     fontFamily: F.labelExtra,
     fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
+    color: C.onSurface,
     marginBottom: 6,
   },
   avatarOverlap: {
@@ -522,8 +578,8 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#18181b', // match background to simulate inner clip
-    backgroundColor: '#3f3f46',
+    borderColor: C.surfaceContainerLowest, 
+    backgroundColor: C.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -532,7 +588,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#18181b',
+    borderColor: C.surfaceContainerLowest,
     backgroundColor: C.tertiary,
     alignItems: 'center',
     justifyContent: 'center',

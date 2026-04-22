@@ -20,18 +20,11 @@ function FullHouseHeader() {
     <View style={hdr.container}>
       <View style={hdr.logoRow}>
         <View style={{ marginRight: 8, marginTop: 4 }}>
-          <Svg width={30} height={30} viewBox="0 0 100 100">
-            {/* Right Black House Half */}
-            <Path 
-              d="M 52 10 L 96 45 L 75 45 L 75 80 L 48 82 Z" 
-              fill="#242526" 
-            />
-            {/* Left Red Tag/Arrow Half */}
-            <Path 
-              d="M 46 15 L 2 45 L 25 45 L 28 85 C 28 85, 40 90, 54 82 L 46 15 Z" 
-              fill="#ad0a1b" 
-            />
-          </Svg>
+          <Image 
+            source={require('../../assets/images/fullhouse_logo.png')} 
+            style={{ width: 32, height: 32 }} 
+            resizeMode="contain" 
+          />
         </View>
         <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
           <Text style={{ fontFamily: 'Newsreader_800ExtraBold', fontSize: 24, fontStyle: 'italic', letterSpacing: -0.5, color: '#1b1c1c', lineHeight: 26 }}>Full House</Text>
@@ -50,8 +43,8 @@ const hdr = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 52 : 44,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'web' ? 16 : Platform.OS === 'ios' ? 44 : 32,
+    paddingBottom: 12,
     backgroundColor: '#ffffff',
   },
   logoRow: { flexDirection: 'row', alignItems: 'center' },

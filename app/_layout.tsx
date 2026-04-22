@@ -1,7 +1,6 @@
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,7 +19,6 @@ export const unstable_settings = {
 };
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
   const { session, user, initialized } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -107,14 +105,24 @@ function RootLayoutNav() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(setup)" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="settings" 
+          options={{ 
+            title: 'Settings', 
+            headerStyle: { backgroundColor: '#fcf9f8' }, 
+            headerShadowVisible: false, 
+            headerTintColor: '#1b1c1c', 
+            headerTitleStyle: { fontFamily: 'Newsreader_800ExtraBold', fontSize: 22 } 
+          }} 
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
     </ThemeProvider>
   );
 }
