@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Bell, ChevronRight, Crown, LogOut, Search, Shield, Trash2, User as UserIcon } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
     const { theme: C, isDark, toggleTheme } = useTheme();
@@ -22,24 +22,28 @@ export default function SettingsScreen() {
     };
 
     const handleDeleteAccount = () => {
-        Alert.alert(
-            'Delete Account',
-            'Are you sure you want to delete your account? This action cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete', style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteAccount();
-                            // Sign out and redirection is handled by deleteAccount and AuthProvider
-                        } catch (err: any) {
-                            Alert.alert('Error', err.message || 'Failed to delete account.');
-                        }
-                    }
-                }
-            ]
-        );
+        const performDelete = async () => {
+            try {
+                await deleteAccount();
+            } catch (err: any) {
+                Alert.alert('Error', err.message || 'Failed to delete account.');
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                performDelete();
+            }
+        } else {
+            Alert.alert(
+                'Delete Account',
+                'Are you sure you want to delete your account? This action cannot be undone.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: performDelete }
+                ]
+            );
+        }
     };
 
     // Admin functions
