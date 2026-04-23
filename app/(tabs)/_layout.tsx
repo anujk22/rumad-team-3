@@ -1,23 +1,16 @@
+import { useQueue } from '@/hooks/useQueue';
 import { useTheme } from '@/hooks/useTheme';
 import { F } from '@/lib/helpers';
-import { useQueue } from '@/hooks/useQueue';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
 import { Calendar, Compass, MessageSquare, User, Users } from 'lucide-react-native';
-import { Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useRef } from 'react';
-
-const C_STATIC = {
-  surface: '#fcf9f8',
-  primary: '#af101a',
-  tertiary: '#705d00',
-  onSurface: '#1b1c1c',
-  outlineVariant: 'rgba(228,190,186,0.2)',
-};
+import { Animated, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 
 function FullHouseHeader() {
   const router = useRouter();
   const { status, queueCount, chatId, clearReady } = useQueue();
+  const { theme: C } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -43,74 +36,68 @@ function FullHouseHeader() {
   };
 
   return (
-    <View style={hdr.container}>
-      <View style={hdr.logoRow}>
+    <View style={{
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: Platform.OS === 'web' ? 16 : Platform.OS === 'ios' ? 44 : 32,
+      paddingBottom: 12,
+      backgroundColor: C.card,
+      borderBottomWidth: 1,
+      borderBottomColor: C.outlineAlpha,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Image
           source={require('../../assets/images/fullhouse_logo.png')}
           style={{ width: 28, height: 28, marginRight: 10 }}
           resizeMode="contain"
         />
-        <Text style={{ 
-          fontFamily: 'AbhayaLibre_800ExtraBold', 
-          fontSize: 26, 
-          color: '#af101a', 
+        <Text style={{
+          fontFamily: 'AbhayaLibre_800ExtraBold',
+          fontSize: 26,
+          color: C.primary,
           letterSpacing: -0.8,
           lineHeight: 30,
           includeFontPadding: false,
-          textAlignVertical: 'center'
+          textAlignVertical: 'center',
         }}>
           Full House
         </Text>
       </View>
 
-      <View style={hdr.rightRow}>
-        {/* Queue Status Indicator */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {status === 'queued' && (
-          <Animated.View style={[hdr.queuePill, { opacity: pulseAnim }]}>
-            <MaterialCommunityIcons name="cards-playing-outline" size={12} color="#fff" />
-            <Text style={hdr.queuePillText}>FINDING TABLE... {queueCount}</Text>
+          <Animated.View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            backgroundColor: C.tertiary, borderRadius: 999,
+            paddingHorizontal: 16, paddingVertical: 8,
+            opacity: pulseAnim,
+          }}>
+            <MaterialCommunityIcons name="cards-playing-outline" size={12} color={C.onTertiary} />
+            <Text style={{ fontFamily: F.label, fontSize: 10, color: C.onTertiary, letterSpacing: 1.5 }}>
+              FINDING TABLE... {queueCount}
+            </Text>
           </Animated.View>
         )}
         {status === 'ready' && (
-          <TouchableOpacity style={hdr.readyPill} onPress={handleQueueTap} activeOpacity={0.8}>
-            <Text style={hdr.readyPillText}>🃏 Table Ready!</Text>
+          <TouchableOpacity style={{
+            backgroundColor: C.primary, borderRadius: 999,
+            paddingHorizontal: 14, paddingVertical: 8,
+          }} onPress={handleQueueTap} activeOpacity={0.8}>
+            <Text style={{ fontWeight: '700', fontSize: 12, color: C.onPrimary }}>🃏 Table Ready!</Text>
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={hdr.avatar} onPress={() => router.push('/settings')} activeOpacity={0.8}>
-          <User size={18} color={C_STATIC.primary} />
+        <TouchableOpacity style={{
+          width: 38, height: 38, borderRadius: 19,
+          backgroundColor: C.surfaceContainerHigh, borderWidth: 2, borderColor: C.primary,
+          alignItems: 'center', justifyContent: 'center',
+        }} onPress={() => router.push('/settings')} activeOpacity={0.8}>
+          <User size={18} color={C.primary} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
-const hdr = StyleSheet.create({
-  container: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'web' ? 16 : Platform.OS === 'ios' ? 44 : 32,
-    paddingBottom: 12, backgroundColor: '#ffffff',
-  },
-  logoRow: { flexDirection: 'row', alignItems: 'center' },
-  rightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#e5e2e1', borderWidth: 2, borderColor: C_STATIC.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  queuePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: C_STATIC.tertiary, borderRadius: 999,
-    paddingHorizontal: 16, paddingVertical: 8,
-  },
-  queuePillText: { fontFamily: F.label, fontSize: 10, color: '#fff', letterSpacing: 1.5 },
-  readyPill: {
-    backgroundColor: C_STATIC.primary, borderRadius: 999,
-    paddingHorizontal: 14, paddingVertical: 8,
-  },
-  readyPillText: { fontWeight: '700', fontSize: 12, color: '#fff' },
-});
 
 function TabItem({ icon, label, active, theme }: { icon: React.ReactNode; label: string; active: boolean; theme: any }) {
   return (
@@ -127,14 +114,14 @@ function TabItem({ icon, label, active, theme }: { icon: React.ReactNode; label:
 }
 
 export default function TabLayout() {
-    const { theme: C } = useTheme();
+  const { theme: C } = useTheme();
   return (
     <Tabs
       screenOptions={{
         header: () => <FullHouseHeader />,
         tabBarStyle: {
-          backgroundColor: 'rgba(252,249,248,0.96)',
-          borderTopWidth: 1, borderTopColor: `${C.onSurface}0D`,
+          backgroundColor: C.card,
+          borderTopWidth: 1, borderTopColor: C.outlineAlpha,
           height: Platform.OS === 'ios' ? 86 : 64,
           paddingBottom: Platform.OS === 'ios' ? 22 : 8,
           paddingTop: 8,

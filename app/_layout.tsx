@@ -1,17 +1,18 @@
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { QueueProvider } from '@/hooks/useQueue';
-import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { ThemeProvider, useTheme } from '@/hooks/useTheme';
+import { AbhayaLibre_800ExtraBold } from '@expo-google-fonts/abhaya-libre';
+import { Manrope_400Regular, Manrope_700Bold } from '@expo-google-fonts/manrope';
+import { Newsreader_400Regular, Newsreader_700Bold, Newsreader_800ExtraBold } from '@expo-google-fonts/newsreader';
+import { PlusJakartaSans_400Regular, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
+import { DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
-import { useFonts } from 'expo-font';
-import { AbhayaLibre_800ExtraBold } from '@expo-google-fonts/abhaya-libre';
-import { PlusJakartaSans_400Regular, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
-import { Manrope_400Regular, Manrope_700Bold } from '@expo-google-fonts/manrope';
-import { Newsreader_400Regular, Newsreader_700Bold, Newsreader_800ExtraBold } from '@expo-google-fonts/newsreader';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -19,6 +20,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const { session, profile, initialized } = useAuth();
+  const { isDark, theme } = useTheme();
   const segments = useSegments();
   const router = useRouter();
 
@@ -29,47 +31,53 @@ function RootLayoutNav() {
     const inSetupGroup = segments[0] === '(setup)';
 
     if (!session) {
-      // Not logged in → go to auth
       if (!inAuthGroup) {
         router.replace('/(auth)');
       }
     } else if (profile && !profile.onboarding_completed) {
-      // Logged in but hasn't completed onboarding
       if (segments[1] === 'create-password') {
         // Let them stay on password creation
       } else if (!inSetupGroup) {
         router.replace('/(setup)/profile');
       }
     } else if (profile && profile.onboarding_completed) {
-      // Logged in and onboarding complete → go to main app
       if (inAuthGroup) {
         router.replace('/(tabs)');
       }
     }
-    // If profile is null but session exists, we're still loading profile — do nothing
   }, [session, profile, initialized, segments]);
 
   if (!initialized) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fcf9f8', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#af101a" size="large" />
+      <View style={{ flex: 1, backgroundColor: theme.surface, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <ThemeProvider value={DefaultTheme}>
+    <NavThemeProvider value={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: theme.surface } }}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(setup)" options={{ headerShown: false }} />
         <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ title: 'Settings', headerTitleAlign: 'center', headerStyle: { backgroundColor: '#fcf9f8' }, headerShadowVisible: false, headerTintColor: '#1b1c1c', headerTitleStyle: { fontFamily: 'Newsreader_700Bold', fontSize: 22 } }} />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            headerTitleAlign: 'center',
+            headerStyle: { backgroundColor: theme.card },
+            headerShadowVisible: false,
+            headerTintColor: theme.onSurface,
+            headerTitleStyle: { fontFamily: 'Newsreader_700Bold', fontSize: 22 },
+          }}
+        />
         <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
-      <StatusBar style="dark" />
-    </ThemeProvider>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </NavThemeProvider>
   );
 }
 
@@ -91,10 +99,12 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <QueueProvider>
-        <RootLayoutNav />
-      </QueueProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <QueueProvider>
+          <RootLayoutNav />
+        </QueueProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

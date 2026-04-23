@@ -1,7 +1,7 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueue } from '@/hooks/useQueue';
-import { C, F } from '@/lib/helpers';
+import { useTheme } from '@/hooks/useTheme';
+import { F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -12,38 +12,42 @@ import Svg, { G, Polygon } from 'react-native-svg';
 
 // --- Suits config ---
 const SUITS = [
-  { key: 'freshman',  label: 'Freshman',  icon: '♥',  accentColor: '#af101a', field: 'academic_year', value: 'Freshman' },
-  { key: 'cooking',   label: 'Cooking',   icon: '🍴', accentColor: '#705d00', field: 'tag', value: 'Cooking' },
-  { key: 'socials',   label: 'Socials',   icon: '🍸', accentColor: '#1b1c1c', field: 'tag', value: 'Social' },
-  { key: 'sports',    label: 'Sports',    icon: '⚔',  accentColor: '#8f6f6c', field: 'tag', value: 'Sports' },
+  { key: 'freshman', label: 'Freshman', icon: '♥', accentColor: '#af101a', field: 'academic_year', value: 'Freshman' },
+  { key: 'cooking', label: 'Cooking', icon: '🍴', accentColor: '#705d00', field: 'tag', value: 'Cooking' },
+  { key: 'socials', label: 'Socials', icon: '🍸', accentColor: '#555', field: 'tag', value: 'Social' },
+  { key: 'sports', label: 'Sports', icon: '⚔', accentColor: '#8f6f6c', field: 'tag', value: 'Sports' },
 ];
 
-const CustomDiamond = ({ size = 24, color = C.primary }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24">
-    <G fill={color}>
-      <Polygon points="11,2 11,11 2,11" />
-      <Polygon points="13,2 13,11 22,11" />
-      <Polygon points="3,13 11,13 11,21 6.5,21" />
-      <Polygon points="21,13 13,13 13,21 17.5,21" />
-    </G>
-  </Svg>
-);
-
-function FannedCards() {
+function FannedCards({ theme: C }: { theme: any }) {
+  const fanStyles = createFanStyles(C);
   return (
     <View style={fanStyles.container}>
       <View style={[fanStyles.cardBase, fanStyles.cardBackground]} />
       <View style={[fanStyles.cardBase, fanStyles.cardForeground]}>
         <View style={fanStyles.topLeft}>
           <Text style={fanStyles.cardRank}>K</Text>
-          <CustomDiamond size={20} color={C.primary} />
+          <Svg width={20} height={20} viewBox="0 0 24 24">
+            <G fill={C.primary}>
+              <Polygon points="11,2 11,11 2,11" />
+              <Polygon points="13,2 13,11 22,11" />
+              <Polygon points="3,13 11,13 11,21 6.5,21" />
+              <Polygon points="21,13 13,13 13,21 17.5,21" />
+            </G>
+          </Svg>
         </View>
         <View style={fanStyles.centerContent}>
           <Text style={fanStyles.joinLabel}>JOIN THE TABLE</Text>
           <Text style={fanStyles.promptText}>Ready for a{'\n'}random chat?</Text>
         </View>
         <View style={fanStyles.bottomRight}>
-          <CustomDiamond size={20} color={C.primary} />
+          <Svg width={20} height={20} viewBox="0 0 24 24">
+            <G fill={C.primary}>
+              <Polygon points="11,2 11,11 2,11" />
+              <Polygon points="13,2 13,11 22,11" />
+              <Polygon points="3,13 11,13 11,21 6.5,21" />
+              <Polygon points="21,13 13,13 13,21 17.5,21" />
+            </G>
+          </Svg>
           <Text style={fanStyles.cardRank}>K</Text>
         </View>
       </View>
@@ -51,11 +55,11 @@ function FannedCards() {
   );
 }
 
-const fanStyles = StyleSheet.create({
+const createFanStyles = (C: any) => StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center', height: 310, marginBottom: 16, position: 'relative' },
-  cardBase: { width: 200, height: 290, borderRadius: 16, position: 'absolute', borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)' },
+  cardBase: { width: 200, height: 290, borderRadius: 16, position: 'absolute', borderWidth: 1, borderColor: C.outlineAlpha },
   cardBackground: { backgroundColor: C.surfaceContainerHighest, transform: [{ rotate: '5deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, top: 15 },
-  cardForeground: { backgroundColor: C.surfaceContainerLowest, transform: [{ rotate: '-2deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 6, padding: 16, justifyContent: 'space-between' },
+  cardForeground: { backgroundColor: C.card, transform: [{ rotate: '-2deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 6, padding: 16, justifyContent: 'space-between' },
   topLeft: { alignSelf: 'flex-start', alignItems: 'center' },
   bottomRight: { alignSelf: 'flex-end', alignItems: 'center', transform: [{ rotate: '180deg' }] },
   cardRank: { fontFamily: F.headlineBase, fontSize: 26, lineHeight: 28, color: C.primary },
@@ -65,8 +69,8 @@ const fanStyles = StyleSheet.create({
 });
 
 export default function DiscoverScreen() {
-    const { theme: C } = useTheme();
-    const styles = createStyles(C);
+  const { theme: C } = useTheme();
+  const styles = createStyles(C);
   const { user } = useAuth();
   const { status, joinQueue, leaveQueue } = useQueue();
   const { width } = useWindowDimensions();
@@ -100,7 +104,6 @@ export default function DiscoverScreen() {
           .eq('academic_year', suit.value);
         counts[suit.key] = count || 0;
       } else {
-        // tag-based: count profiles with a matching tag name
         const { data: tagRow } = await supabase
           .from('tags')
           .select('id')
@@ -136,7 +139,6 @@ export default function DiscoverScreen() {
 
   const handleStudyCrewSubmit = async () => {
     if (!courseCode.trim() || !user) return;
-    // Create or join study crew chat
     const code = courseCode.trim().toUpperCase();
     const { data: existing, error: searchError } = await supabase
       .from('chats')
@@ -151,18 +153,15 @@ export default function DiscoverScreen() {
     }
 
     if (existing) {
-      // Join existing
       const { error: joinError } = await supabase.from('chat_participants').upsert({ chat_id: existing.id, user_id: user.id });
       if (joinError) console.error(joinError);
       router.push(`/chat/${existing.id}` as any);
     } else {
-      // Create new
       const { data: chat, error: insertError } = await supabase
         .from('chats')
         .insert({ type: 'study_crew', name: code, metadata: { course_code: code } })
         .select()
         .single();
-        
       if (insertError) {
         alert('Error creating chat: ' + insertError.message);
         return;
@@ -180,7 +179,7 @@ export default function DiscoverScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.maxWidthContainer, { width: isTablet ? 672 : '100%' }]}>
           <Text style={styles.mainTitle}>Discover</Text>
-          <FannedCards />
+          <FannedCards theme={C} />
 
           <Animated.View style={{ transform: [{ scale: dealBtnScale }], marginBottom: 12 }}>
             <TouchableOpacity
@@ -231,7 +230,7 @@ export default function DiscoverScreen() {
               <Search size={20} color={C.secondary} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search interests (e.g.ooking, CS)"
+                placeholder="Search interests (e.g. Cooking, CS)"
                 placeholderTextColor={C.secondary}
                 value={search}
                 onChangeText={setSearch}
@@ -269,7 +268,7 @@ export default function DiscoverScreen() {
                 autoCapitalize="characters"
               />
               <TouchableOpacity style={styles.crewSubmitBtn} onPress={handleStudyCrewSubmit}>
-                <ArrowRight size={20} color={C.surfaceContainerLowest} strokeWidth={2.5} />
+                <ArrowRight size={20} color={C.onTertiary} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>
@@ -291,33 +290,31 @@ const createStyles = (C: any) => StyleSheet.create({
   dealBtnQueued: { backgroundColor: C.onSurface },
   dealBtnText: { fontFamily: F.headlineBase, color: C.onPrimary, fontSize: 22, letterSpacing: 0, marginTop: 2 },
   dealSubtext: { fontFamily: F.label, textAlign: 'center', fontSize: 9, color: C.secondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  // Browse Suits
   suitsSection: { marginTop: 40, width: '100%' },
   suitsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 4 },
   suitCard: {
-    width: '47%', backgroundColor: '#ffffff',
+    width: '47%', backgroundColor: C.card,
     borderRadius: 20, padding: 20,
     borderLeftWidth: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
-    borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)',
+    borderWidth: 1.5, borderColor: C.outlineAlpha,
     gap: 6,
   },
   suitIcon: { fontSize: 22 },
   suitLabel: { fontFamily: F.headlineBase, fontSize: 20, color: C.onSurface, lineHeight: 24 },
   suitCount: { fontFamily: F.body, fontSize: 12, color: C.secondary },
   viewDeckText: { fontFamily: F.label, fontSize: 10, letterSpacing: 1.5, color: C.secondary, textTransform: 'uppercase' },
-  // Interests
   sectionMarginInterests: { marginTop: 40, width: '100%' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 },
   sectionHeader: { fontFamily: F.headlineBase, fontSize: 26, color: C.onSurface, letterSpacing: -0.5 },
-  searchBarBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, paddingHorizontal: 16, height: 54, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
+  searchBarBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 16, paddingHorizontal: 16, height: 54, borderWidth: 1.5, borderColor: C.outlineAlpha, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, fontFamily: F.body, fontSize: 15, color: C.onSurface, height: '100%' },
   tagsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16, marginBottom: 24 },
-  tagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ffffff', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  tagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.card, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: C.outlineAlpha, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
   tagChipEmoji: { fontSize: 16 },
   tagChipText: { fontFamily: F.label, fontSize: 12, color: C.onSurface },
-  crewContainer: { backgroundColor: '#ffffff', borderRadius: 24, padding: 24, marginTop: 16, position: 'relative', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)' },
+  crewContainer: { backgroundColor: C.card, borderRadius: 24, padding: 24, marginTop: 16, position: 'relative', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, borderWidth: 1.5, borderColor: C.outlineAlpha },
   crewWatermark: { position: 'absolute', top: 10, right: 10 },
   crewTitle: { fontFamily: F.headlineBase, fontSize: 28, color: C.onSurface, marginBottom: 8 },
   crewBody: { fontFamily: F.body, fontSize: 14, color: C.secondary, marginBottom: 24 },
