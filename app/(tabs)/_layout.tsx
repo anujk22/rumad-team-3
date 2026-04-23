@@ -158,17 +158,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="groups"
-        options={{
-          title: 'Groups',
-          tabBarIcon: ({ focused }) => (
-            <TabItem label="Groups" active={focused} theme={C}
-              icon={<MaterialCommunityIcons name="account-group-outline" size={26} color={focused ? C.tertiary : `${C.onSurface}50`} />}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="chats"
         options={{
           title: 'Chats',

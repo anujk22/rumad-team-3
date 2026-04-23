@@ -20,7 +20,7 @@ function normalizeTag(t: string) {
   return t.trim();
 }
 
-export default function GroupsTab() {
+export default function GroupsScreen() {
   const { theme: C } = useTheme();
   const styles = createStyles(C);
   const { user } = useAuth();
@@ -45,6 +45,7 @@ export default function GroupsTab() {
 
   useEffect(() => {
     fetchGroups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeTag]);
 
   const fetchTags = async () => {
@@ -65,9 +66,7 @@ export default function GroupsTab() {
         .limit(50);
 
       const tag = normalizeTag(activeTag);
-      if (tag) {
-        query = query.contains('metadata', { tags: [tag] } as any);
-      }
+      if (tag) query = query.contains('metadata', { tags: [tag] } as any);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -78,10 +77,7 @@ export default function GroupsTab() {
           .from('chat_participants')
           .select('*', { count: 'exact', head: true })
           .eq('chat_id', g.id);
-        results.push({
-          ...g,
-          participant_count: count || 0,
-        });
+        results.push({ ...g, participant_count: count || 0 });
       }
       setGroups(results);
     } catch (e) {
@@ -98,8 +94,8 @@ export default function GroupsTab() {
     return groups.filter(g => {
       const name = (g.name || '').toLowerCase();
       const icon = (g.metadata?.icon_emoji || '').toLowerCase();
-      const tags = (g.metadata?.tags || []).join(' ').toLowerCase();
-      return name.includes(q) || tags.includes(q) || icon.includes(q);
+      const tagsText = (g.metadata?.tags || []).join(' ').toLowerCase();
+      return name.includes(q) || tagsText.includes(q) || icon.includes(q);
     });
   }, [groups, search]);
 
@@ -107,9 +103,7 @@ export default function GroupsTab() {
     if (!user) return;
     setJoining(chatId);
     try {
-      const { error } = await supabase
-        .from('chat_participants')
-        .upsert({ chat_id: chatId, user_id: user.id });
+      const { error } = await supabase.from('chat_participants').upsert({ chat_id: chatId, user_id: user.id });
       if (error) throw error;
       router.push(`/chat/${chatId}` as any);
     } catch (e) {
@@ -125,11 +119,7 @@ export default function GroupsTab() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Text style={styles.pageTitle}>Groups</Text>
-          <TouchableOpacity
-            style={styles.createBtn}
-            activeOpacity={0.85}
-            onPress={() => router.push('/(tabs)/groups/create' as any)}
-          >
+          <TouchableOpacity style={styles.createBtn} activeOpacity={0.85} onPress={() => router.push('/groups/create' as any)}>
             <Plus size={18} color={C.onPrimary} />
             <Text style={styles.createBtnText}>CREATE</Text>
           </TouchableOpacity>
@@ -149,11 +139,7 @@ export default function GroupsTab() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagRow}>
-          <TouchableOpacity
-            style={[styles.tagChip, !activeTag && styles.tagChipActive]}
-            onPress={() => setActiveTag('')}
-            activeOpacity={0.85}
-          >
+          <TouchableOpacity style={[styles.tagChip, !activeTag && styles.tagChipActive]} onPress={() => setActiveTag('')} activeOpacity={0.85}>
             <Text style={[styles.tagChipText, !activeTag && styles.tagChipTextActive]}>All</Text>
           </TouchableOpacity>
           {tags.map(t => {
@@ -196,9 +182,7 @@ export default function GroupsTab() {
                     <Text style={styles.groupName} numberOfLines={1}>{g.name || 'Group'}</Text>
                     <Text style={styles.groupMembers}>{g.participant_count} members</Text>
                   </View>
-                  {!!tagsText && (
-                    <Text style={styles.groupTags} numberOfLines={1}>{tagsText}</Text>
-                  )}
+                  {!!tagsText && <Text style={styles.groupTags} numberOfLines={1}>{tagsText}</Text>}
                 </View>
                 <TouchableOpacity
                   style={styles.joinBtn}
@@ -206,11 +190,7 @@ export default function GroupsTab() {
                   disabled={joining === g.id}
                   activeOpacity={0.85}
                 >
-                  {joining === g.id ? (
-                    <ActivityIndicator color={C.onPrimary} />
-                  ) : (
-                    <Text style={styles.joinBtnText}>JOIN</Text>
-                  )}
+                  {joining === g.id ? <ActivityIndicator color={C.onPrimary} /> : <Text style={styles.joinBtnText}>JOIN</Text>}
                 </TouchableOpacity>
               </View>
             );

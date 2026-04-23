@@ -69,7 +69,7 @@ export default function CreateGroupScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/(tabs)/chats' as any)} activeOpacity={0.8}>
           <ArrowLeft size={22} color={C.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Group</Text>
@@ -122,7 +122,7 @@ export default function CreateGroupScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.helpText}>
-                {isPublic ? 'Public groups appear in the Groups tab.' : 'Private by default. Invite-only for now.'}
+                {isPublic ? 'Public groups appear in Browse Suits.' : 'Private by default. Invite-only for now.'}
               </Text>
             </View>
           </View>

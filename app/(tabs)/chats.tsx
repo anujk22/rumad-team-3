@@ -245,7 +245,7 @@ export default function ChatsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.titleRow}>
           <Text style={styles.pageTitle}>Chats</Text>
-          <TouchableOpacity style={styles.groupShortcut} onPress={() => router.push('/(tabs)/groups/create' as any)} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.groupShortcut} onPress={() => router.push('/groups/create' as any)} activeOpacity={0.85}>
             <Users size={18} color={C.onPrimary} />
             <Text style={styles.groupShortcutText}>GROUP</Text>
           </TouchableOpacity>

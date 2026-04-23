@@ -20,7 +20,7 @@ const { width, height } = Dimensions.get('window');
 
 
 export default function WelcomeScreen() {
-  const { theme: C } = useTheme();
+  const { theme: C, isDark } = useTheme();
   const styles = createStyles(C);
   const router = useRouter();
 
@@ -94,7 +94,9 @@ export default function WelcomeScreen() {
             {/* Main card face */}
             <View style={styles.cardFace}>
               <Image
-                source={require('../../assets/images/fullhouse_logo.png')}
+                source={isDark
+                  ? require('../../assets/images/fullhouse_darkmode.png')
+                  : require('../../assets/images/fullhouse_logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />

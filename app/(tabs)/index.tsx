@@ -201,7 +201,7 @@ export default function DiscoverScreen() {
           <View style={styles.suitsSection}>
             <View style={styles.rowBetween}>
               <Text style={styles.sectionHeader}>Browse Suits</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/groups' as any)} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => router.push('/groups' as any)} activeOpacity={0.7}>
                 <Text style={styles.viewDeckText}>VIEW DECK</Text>
               </TouchableOpacity>
             </View>
@@ -212,8 +212,8 @@ export default function DiscoverScreen() {
                   style={[styles.suitCard, { borderLeftColor: suit.accentColor }]}
                   activeOpacity={0.85}
                   onPress={() => {
-                    if (suit.field === 'tag') router.push({ pathname: '/(tabs)/groups', params: { tag: suit.value } } as any);
-                    else router.push('/(tabs)/groups' as any);
+                    if (suit.field === 'tag') router.push({ pathname: '/groups', params: { tag: suit.value } } as any);
+                    else router.push('/groups' as any);
                   }}
                 >
                   <Text style={[styles.suitIcon, { color: suit.accentColor }]}>{suit.icon}</Text>
@@ -251,7 +251,7 @@ export default function DiscoverScreen() {
                   key={tag.id}
                   style={styles.tagChip}
                   activeOpacity={0.8}
-                  onPress={() => router.push({ pathname: '/(tabs)/groups', params: { tag: tag.name } } as any)}
+                  onPress={() => router.push({ pathname: '/groups', params: { tag: tag.name } } as any)}
                 >
                   <Text style={styles.tagChipEmoji}>{tag.emoji}</Text>
                   <Text style={styles.tagChipText}>{tag.name}</Text>
