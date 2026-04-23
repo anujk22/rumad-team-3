@@ -4,7 +4,7 @@ import { F, formatTimeAgo, getInitials } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Search, User } from 'lucide-react-native';
+import { Check, Search, User, UserPlus, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -17,6 +17,16 @@ type ChatPreview = {
   other_user_name: string;
   other_user_avatar: string | null;
   participant_count: number;
+  metadata?: any;
+};
+
+type PersonRow = {
+  id: string;
+  first_name: string | null;
+  avatar_urls: string[] | null;
+  academic_year: string | null;
+  major: string | null;
+  friendship_status: 'none' | 'pending_outgoing' | 'pending_incoming' | 'friends';
 };
 
 export default function ChatsScreen() {
@@ -27,6 +37,10 @@ export default function ChatsScreen() {
   const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'chats' | 'people'>('chats');
+  const [peopleQuery, setPeopleQuery] = useState('');
+  const [people, setPeople] = useState<PersonRow[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -42,6 +56,12 @@ export default function ChatsScreen() {
       return () => { supabase.removeChannel(channel); };
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (tab !== 'people') return;
+    searchPeople();
+  }, [tab, peopleQuery, user]);
 
   const fetchChats = async () => {
     if (!user) return;
@@ -63,7 +83,7 @@ export default function ChatsScreen() {
       // Get chat details
       const { data: chatData } = await supabase
         .from('chats')
-        .select('id, type, name')
+        .select('id, type, name, metadata')
         .in('id', chatIds);
 
       const previews: ChatPreview[] = [];
@@ -97,6 +117,7 @@ export default function ChatsScreen() {
           other_user_name: otherUser?.profiles?.first_name || 'User',
           other_user_avatar: otherUser?.profiles?.avatar_urls?.[0] || null,
           participant_count: participantCount,
+          metadata: (chat as any).metadata,
         });
       }
 
@@ -107,6 +128,100 @@ export default function ChatsScreen() {
       console.error('Error fetching chats:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getFriendshipStatus = (rows: any[] | null | undefined, otherId: string): PersonRow['friendship_status'] => {
+    if (!rows || rows.length === 0) return 'none';
+    for (const r of rows) {
+      if (r.status !== 'accepted' && r.status !== 'pending') continue;
+      if (r.requester_id === user?.id && r.addressee_id === otherId) return r.status === 'accepted' ? 'friends' : 'pending_outgoing';
+      if (r.addressee_id === user?.id && r.requester_id === otherId) return r.status === 'accepted' ? 'friends' : 'pending_incoming';
+    }
+    return 'none';
+  };
+
+  const searchPeople = async () => {
+    if (!user) return;
+    const q = peopleQuery.trim();
+    setPeopleLoading(true);
+    try {
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('id, first_name, avatar_urls, academic_year, major')
+        .eq('onboarding_completed', true)
+        .neq('id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(25);
+
+      if (q) {
+        profilesQuery = profilesQuery.ilike('first_name', `%${q}%`);
+      }
+
+      const { data: profs, error: profErr } = await profilesQuery;
+      if (profErr) throw profErr;
+
+      const ids = (profs || []).map(p => p.id);
+      const { data: fr } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id, status')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .in('requester_id', [user.id, ...ids])
+        .in('addressee_id', [user.id, ...ids]);
+
+      const peopleRows: PersonRow[] = (profs || []).map(p => ({
+        id: p.id,
+        first_name: (p as any).first_name,
+        avatar_urls: (p as any).avatar_urls || [],
+        academic_year: (p as any).academic_year,
+        major: (p as any).major,
+        friendship_status: getFriendshipStatus(fr as any, p.id),
+      }));
+      setPeople(peopleRows);
+    } catch (e) {
+      console.error('Error searching people', e);
+      setPeople([]);
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const requestFriend = async (otherId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('friendships').insert({
+        requester_id: user.id,
+        addressee_id: otherId,
+        status: 'pending',
+      });
+      if (error) throw error;
+      searchPeople();
+    } catch (e) {
+      console.error('Error requesting friend', e);
+      alert('Could not send request.');
+    }
+  };
+
+  const acceptFriend = async (otherId: string) => {
+    if (!user) return;
+    try {
+      const { data: row } = await supabase
+        .from('friendships')
+        .select('id')
+        .eq('requester_id', otherId)
+        .eq('addressee_id', user.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+      if (!row?.id) return;
+      const { error } = await supabase
+        .from('friendships')
+        .update({ status: 'accepted' })
+        .eq('id', row.id);
+      if (error) throw error;
+      searchPeople();
+    } catch (e) {
+      console.error('Error accepting friend', e);
+      alert('Could not accept request.');
     }
   };
 
@@ -128,90 +243,181 @@ export default function ChatsScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.pageTitle}>Chats</Text>
-
-        {/* Search */}
-        <View style={styles.searchBox}>
-          <Search size={18} color={C.secondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations..."
-            placeholderTextColor={C.secondary}
-            value={search}
-            onChangeText={setSearch}
-          />
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>Chats</Text>
+          <TouchableOpacity style={styles.groupShortcut} onPress={() => router.push('/(tabs)/groups/create' as any)} activeOpacity={0.85}>
+            <Users size={18} color={C.onPrimary} />
+            <Text style={styles.groupShortcutText}>GROUP</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Inner Circle (Direct Matches) */}
-        {directChats.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>INNER CIRCLE</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.circleScroll}>
-              {directChats.map(chat => (
-                <TouchableOpacity
-                  key={chat.id}
-                  style={styles.circleItem}
-                  onPress={() => router.push(`/chat/${chat.id}` as any)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.circleAvatar}>
-                    {chat.other_user_avatar ? (
-                      <Image source={{ uri: chat.other_user_avatar }} style={styles.circleAvatarImg} />
-                    ) : (
-                      <Text style={styles.circleInitials}>{getInitials(chat.other_user_name)}</Text>
-                    )}
-                  </View>
-                  <Text style={styles.circleName} numberOfLines={1}>{chat.other_user_name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        <View style={styles.topTabs}>
+          <TouchableOpacity style={[styles.topTabBtn, tab === 'chats' && styles.topTabBtnActive]} onPress={() => setTab('chats')} activeOpacity={0.85}>
+            <Text style={[styles.topTabText, tab === 'chats' && styles.topTabTextActive]}>Chats</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.topTabBtn, tab === 'people' && styles.topTabBtnActive]} onPress={() => setTab('people')} activeOpacity={0.85}>
+            <Text style={[styles.topTabText, tab === 'people' && styles.topTabTextActive]}>People</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* All Conversations */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>CONVERSATIONS</Text>
-          {filteredChats.length === 0 ? (
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="chat-outline" size={48} color={C.outlineAlpha} />
-              <Text style={styles.emptyTitle}>No conversations yet</Text>
-              <Text style={styles.emptyBody}>Swipe right or hit "Deal Me In" to start chatting!</Text>
+        {tab === 'chats' ? (
+          <>
+            {/* Search */}
+            <View style={styles.searchBox}>
+              <Search size={18} color={C.secondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search conversations..."
+                placeholderTextColor={C.secondary}
+                value={search}
+                onChangeText={setSearch}
+              />
             </View>
-          ) : (
-            filteredChats.map(chat => (
-              <TouchableOpacity
-                key={chat.id}
-                style={styles.chatRow}
-                onPress={() => router.push(`/chat/${chat.id}` as any)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.chatAvatar}>
-                  {chat.type === 'direct' && chat.other_user_avatar ? (
-                    <Image source={{ uri: chat.other_user_avatar }} style={styles.chatAvatarImg} />
-                  ) : chat.type === 'spontaneous' ? (
-                    <MaterialCommunityIcons name="cards-playing" size={22} color={C.primary} />
-                  ) : chat.type === 'study_crew' ? (
-                    <MaterialCommunityIcons name="school" size={22} color={C.tertiary} />
-                  ) : (
-                    <User size={22} color={C.outline} />
-                  )}
+
+            {/* Inner Circle (Direct Matches) */}
+            {directChats.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>INNER CIRCLE</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.circleScroll}>
+                  {directChats.map(chat => (
+                    <TouchableOpacity
+                      key={chat.id}
+                      style={styles.circleItem}
+                      onPress={() => router.push(`/chat/${chat.id}` as any)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.circleAvatar}>
+                        {chat.other_user_avatar ? (
+                          <Image source={{ uri: chat.other_user_avatar }} style={styles.circleAvatarImg} />
+                        ) : (
+                          <Text style={styles.circleInitials}>{getInitials(chat.other_user_name)}</Text>
+                        )}
+                      </View>
+                      <Text style={styles.circleName} numberOfLines={1}>{chat.other_user_name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* All Conversations */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>CONVERSATIONS</Text>
+              {filteredChats.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <MaterialCommunityIcons name="chat-outline" size={48} color={C.outlineAlpha} />
+                  <Text style={styles.emptyTitle}>No conversations yet</Text>
+                  <Text style={styles.emptyBody}>Swipe right or hit "Deal Me In" to start chatting!</Text>
                 </View>
-                <View style={styles.chatInfo}>
-                  <View style={styles.chatTopRow}>
-                    <Text style={styles.chatName} numberOfLines={1}>
-                      {chat.type === 'direct' ? chat.other_user_name : chat.name}
-                    </Text>
-                    <Text style={styles.chatTime}>{formatTimeAgo(chat.last_message_time)}</Text>
-                  </View>
-                  <Text style={styles.chatPreview} numberOfLines={1}>{chat.last_message}</Text>
-                  {chat.participant_count > 2 && (
-                    <Text style={styles.chatParticipants}>{chat.participant_count} members</Text>
-                  )}
+              ) : (
+                filteredChats.map(chat => (
+                  <TouchableOpacity
+                    key={chat.id}
+                    style={styles.chatRow}
+                    onPress={() => router.push(`/chat/${chat.id}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.chatAvatar}>
+                      {chat.type === 'direct' && chat.other_user_avatar ? (
+                        <Image source={{ uri: chat.other_user_avatar }} style={styles.chatAvatarImg} />
+                      ) : chat.type === 'spontaneous' ? (
+                        <MaterialCommunityIcons name="cards-playing" size={22} color={C.primary} />
+                      ) : chat.type === 'study_crew' ? (
+                        <MaterialCommunityIcons name="school" size={22} color={C.tertiary} />
+                      ) : chat.type === 'group' && chat.metadata?.icon_emoji ? (
+                        <Text style={styles.groupEmoji}>{chat.metadata.icon_emoji}</Text>
+                      ) : (
+                        <User size={22} color={C.outline} />
+                      )}
+                    </View>
+                    <View style={styles.chatInfo}>
+                      <View style={styles.chatTopRow}>
+                        <Text style={styles.chatName} numberOfLines={1}>
+                          {chat.type === 'direct' ? chat.other_user_name : chat.name}
+                        </Text>
+                        <Text style={styles.chatTime}>{formatTimeAgo(chat.last_message_time)}</Text>
+                      </View>
+                      <Text style={styles.chatPreview} numberOfLines={1}>{chat.last_message}</Text>
+                      {chat.participant_count > 2 && (
+                        <Text style={styles.chatParticipants}>{chat.participant_count} members</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.searchBox}>
+              <Search size={18} color={C.secondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search people by first name..."
+                placeholderTextColor={C.secondary}
+                value={peopleQuery}
+                onChangeText={setPeopleQuery}
+              />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>PEOPLE</Text>
+              {peopleLoading ? (
+                <View style={styles.loadingInline}>
+                  <ActivityIndicator color={C.primary} />
                 </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
+              ) : people.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <MaterialCommunityIcons name="account-search-outline" size={48} color={C.outlineAlpha} />
+                  <Text style={styles.emptyTitle}>No matches</Text>
+                  <Text style={styles.emptyBody}>Try searching a different first name.</Text>
+                </View>
+              ) : (
+                people.map(p => {
+                  const avatar = p.avatar_urls?.[0] || null;
+                  const subtitle = [p.academic_year, p.major].filter(Boolean).join(' · ');
+                  const isOutgoing = p.friendship_status === 'pending_outgoing';
+                  const isIncoming = p.friendship_status === 'pending_incoming';
+                  const isFriends = p.friendship_status === 'friends';
+                  return (
+                    <View key={p.id} style={styles.personRow}>
+                      <View style={styles.personAvatar}>
+                        {avatar ? (
+                          <Image source={{ uri: avatar }} style={styles.personAvatarImg} />
+                        ) : (
+                          <Text style={styles.personInitials}>{getInitials(p.first_name || 'User')}</Text>
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.personName} numberOfLines={1}>{p.first_name || 'User'}</Text>
+                        {!!subtitle && <Text style={styles.personSub} numberOfLines={1}>{subtitle}</Text>}
+                      </View>
+                      {isFriends ? (
+                        <View style={styles.friendBadge}>
+                          <Check size={14} color={C.onTertiary} />
+                          <Text style={styles.friendBadgeText}>Friends</Text>
+                        </View>
+                      ) : isIncoming ? (
+                        <TouchableOpacity style={styles.acceptBtn} onPress={() => acceptFriend(p.id)} activeOpacity={0.85}>
+                          <Text style={styles.acceptBtnText}>ACCEPT</Text>
+                        </TouchableOpacity>
+                      ) : isOutgoing ? (
+                        <View style={styles.pendingBadge}>
+                          <Text style={styles.pendingBadgeText}>Pending</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity style={styles.addBtn} onPress={() => requestFriend(p.id)} activeOpacity={0.85}>
+                          <UserPlus size={16} color={C.onPrimary} />
+                          <Text style={styles.addBtnText}>ADD</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -222,7 +428,15 @@ export default function ChatsScreen() {
 const createStyles = (C: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },
   scrollContent: { padding: 20 },
-  pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1, marginBottom: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12 },
+  pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1 },
+  groupShortcut: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.primary, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: C.outlineAlpha },
+  groupShortcutText: { fontFamily: F.label, fontSize: 10, letterSpacing: 2, color: C.onPrimary },
+  topTabs: { flexDirection: 'row', backgroundColor: C.surfaceContainerHigh, borderRadius: 999, padding: 6, marginBottom: 16 },
+  topTabBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 999 },
+  topTabBtnActive: { backgroundColor: C.tertiary },
+  topTabText: { fontFamily: F.label, fontSize: 11, letterSpacing: 2, color: C.onSurfaceVariant, textTransform: 'uppercase' },
+  topTabTextActive: { color: C.onTertiary },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 14, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: C.outlineAlpha },
   searchInput: { flex: 1, fontFamily: F.body, fontSize: 15, color: C.onSurface },
   section: { marginBottom: 24 },
@@ -239,10 +453,26 @@ const createStyles = (C: any) => StyleSheet.create({
   chatRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: C.outlineAlpha },
   chatAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 14 },
   chatAvatarImg: { width: '100%', height: '100%' },
+  groupEmoji: { fontSize: 20 },
   chatInfo: { flex: 1 },
   chatTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   chatName: { fontFamily: F.bodyBold, fontSize: 16, color: C.onSurface, flex: 1, marginRight: 8 },
   chatTime: { fontFamily: F.label, fontSize: 10, color: C.secondary },
   chatPreview: { fontFamily: F.body, fontSize: 13, color: C.secondary },
   chatParticipants: { fontFamily: F.label, fontSize: 10, color: C.tertiary, marginTop: 4 },
+  loadingInline: { paddingVertical: 22, alignItems: 'center' },
+  personRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.outlineAlpha },
+  personAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: C.outlineAlpha },
+  personAvatarImg: { width: '100%', height: '100%' },
+  personInitials: { fontFamily: F.labelExtra, fontSize: 14, color: C.primary },
+  personName: { fontFamily: F.bodyBold, fontSize: 16, color: C.onSurface },
+  personSub: { fontFamily: F.body, fontSize: 12, color: C.secondary, marginTop: 2 },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  addBtnText: { fontFamily: F.label, fontSize: 10, letterSpacing: 1.5, color: C.onPrimary },
+  pendingBadge: { backgroundColor: C.surfaceContainerHigh, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.outlineAlpha },
+  pendingBadgeText: { fontFamily: F.label, fontSize: 10, letterSpacing: 1.5, color: C.onSurfaceVariant },
+  acceptBtn: { backgroundColor: C.tertiary, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  acceptBtnText: { fontFamily: F.label, fontSize: 10, letterSpacing: 1.5, color: C.onTertiary },
+  friendBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.tertiary, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  friendBadgeText: { fontFamily: F.label, fontSize: 10, letterSpacing: 1.5, color: C.onTertiary },
 });

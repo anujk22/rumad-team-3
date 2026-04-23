@@ -122,10 +122,22 @@ CREATE TABLE IF NOT EXISTS public.swipes (
 -- CHATS
 CREATE TABLE IF NOT EXISTS public.chats (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  type TEXT NOT NULL CHECK (type IN ('direct', 'spontaneous', 'study_crew')),
+  type TEXT NOT NULL CHECK (type IN ('direct', 'spontaneous', 'study_crew', 'group')),
   name TEXT,                
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- FRIENDSHIPS (requests + accepted)
+CREATE TABLE IF NOT EXISTS public.friendships (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  requester_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  addressee_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'blocked')),
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  UNIQUE (requester_id, addressee_id),
+  CHECK (requester_id <> addressee_id)
 );
 
 -- CHAT PARTICIPANTS
@@ -255,15 +267,18 @@ $$;
 -- Chats
 ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view chats they participate in or study crews" ON public.chats FOR SELECT USING (
-  type = 'study_crew' OR public.is_chat_participant(id, auth.uid())
+  type = 'study_crew'
+  OR public.is_chat_participant(id, auth.uid())
+  OR (type = 'group' AND COALESCE((metadata->>'is_public')::boolean, false) = true)
 );
 CREATE POLICY "Authenticated users can create chats" ON public.chats FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Chat Participants
 ALTER TABLE public.chat_participants ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view participants in their chats or study crews" ON public.chat_participants FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND type = 'study_crew') OR
-  public.is_chat_participant(chat_id, auth.uid())
+  EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND type = 'study_crew')
+  OR EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND type = 'group' AND COALESCE((metadata->>'is_public')::boolean, false) = true)
+  OR public.is_chat_participant(chat_id, auth.uid())
 );
 CREATE POLICY "Authenticated users can join chats" ON public.chat_participants FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
@@ -274,6 +289,18 @@ CREATE POLICY "Users can view messages in their chats" ON public.messages FOR SE
 );
 CREATE POLICY "Users can insert messages in their chats" ON public.messages FOR INSERT WITH CHECK (
   auth.uid() = sender_id AND public.is_chat_participant(chat_id, auth.uid())
+);
+
+-- Friendships
+ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their friendships" ON public.friendships FOR SELECT USING (
+  auth.uid() = requester_id OR auth.uid() = addressee_id
+);
+CREATE POLICY "Users can request friendships" ON public.friendships FOR INSERT WITH CHECK (
+  auth.uid() = requester_id
+);
+CREATE POLICY "Users can update their friendships" ON public.friendships FOR UPDATE USING (
+  auth.uid() = requester_id OR auth.uid() = addressee_id
 );
 
 -- Live Queue
