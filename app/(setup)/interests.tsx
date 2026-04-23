@@ -1,9 +1,9 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Tag = { id: string; name: string; emoji: string };
 
@@ -51,24 +51,24 @@ export default function InterestsScreen() {
         try {
             // Capitalize first letter
             const formattedName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-            
+
             // Check if exists first
             let { data: existing } = await supabase.from('tags').select('*').ilike('name', name).maybeSingle();
-            
+
             if (!existing) {
                 const { data: newTag, error } = await supabase.from('tags').insert({ name: formattedName, emoji: '✨' }).select().single();
                 if (!error && newTag) {
                     existing = newTag;
                 }
             }
-            
+
             if (existing) {
                 // Determine if it is already in availableTags list
                 const alreadyInList = availableTags.find(t => t.id === existing!.id);
                 if (!alreadyInList) {
                     setAvailableTags(prev => [...prev, existing!]);
                 }
-                
+
                 // Select it automatically
                 if (!selectedTags.includes(existing.id)) {
                     setSelectedTags(prev => [...prev, existing!.id]);
