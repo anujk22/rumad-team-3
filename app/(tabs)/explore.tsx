@@ -92,11 +92,6 @@ function SwipeCard({ profile, isTop, zIndex, onSwipe, theme: C }: {
                 <Text style={{ fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#ffffff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>📚 {profile.major}</Text>
               </View>
             ) : null}
-            {profile.tags.slice(0, 3).map((tag, i) => (
-              <View key={i} style={{ backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 }}>
-                <Text style={{ fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#ffffff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>{tag}</Text>
-              </View>
-            ))}
           </View>
         </View>
       </View>

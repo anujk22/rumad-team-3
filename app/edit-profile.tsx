@@ -235,6 +235,7 @@ export default function EditProfileScreen() {
                         overrideImages={photos.filter(p => p !== null) as string[]}
                     />
 
+                    <Text style={styles.label}>Current Photos</Text>
                     <View style={styles.photoSection}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoGrid}>
                             {photos.map((photo, index) => (

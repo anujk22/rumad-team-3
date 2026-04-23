@@ -108,16 +108,6 @@ export default function ProfilePreviewCard({
                                         <Text style={styles.tagPillText}>📚 {major}</Text>
                                     </View>
                                 ) : null}
-                                {primaryTags.map((tag, i) => (
-                                    <View key={i} style={styles.tagPill}>
-                                        <Text style={styles.tagPillText}>{tag.emoji} {tag.name}</Text>
-                                    </View>
-                                ))}
-                                {secondaryTags.length > 0 && (
-                                    <View style={styles.tagPill}>
-                                        <Text style={styles.tagPillText}>+{secondaryTags.length}</Text>
-                                    </View>
-                                )}
                             </View>
                         </View>
                     </View>
@@ -135,12 +125,6 @@ export default function ProfilePreviewCard({
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>More Info</Text>
                                 <View style={styles.infoGrid}>
-                                    {year && (
-                                        <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>🎓 {year}</Text></View>
-                                    )}
-                                    {major && (
-                                        <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>📚 {major}</Text></View>
-                                    )}
                                     {age && (
                                         <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>🎂 {age} yrs</Text></View>
                                     )}
@@ -153,7 +137,7 @@ export default function ProfilePreviewCard({
                                     {religion && (
                                         <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>✨ {religion}</Text></View>
                                     )}
-                                    {secondaryTags.map((tag, i) => (
+                                    {selectedTags.map((tag, i) => (
                                         <View key={i} style={styles.infoBadge}>
                                             <Text style={styles.infoBadgeText}>{tag.emoji} {tag.name}</Text>
                                         </View>
