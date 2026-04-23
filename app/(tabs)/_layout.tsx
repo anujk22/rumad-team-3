@@ -1,3 +1,5 @@
+import { useTheme } from '@/hooks/useTheme';
+import { F } from '@/lib/helpers';
 import { useQueue } from '@/hooks/useQueue';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
@@ -5,7 +7,7 @@ import { Calendar, Compass, MessageSquare, User, Users } from 'lucide-react-nati
 import { Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useRef } from 'react';
 
-const C = {
+const C_STATIC = {
   surface: '#fcf9f8',
   primary: '#af101a',
   tertiary: '#705d00',
@@ -43,26 +45,30 @@ function FullHouseHeader() {
   return (
     <View style={hdr.container}>
       <View style={hdr.logoRow}>
-        <View style={{ marginRight: 8, marginTop: 4 }}>
-          <Image
-            source={require('../../assets/images/fullhouse_logo.png')}
-            style={{ width: 32, height: 32 }}
-            resizeMode="contain"
-          />
-        </View>
-        <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
-          <Text style={{ fontFamily: 'Newsreader_800ExtraBold', fontSize: 24, fontStyle: 'italic', letterSpacing: -0.5, color: '#1b1c1c', lineHeight: 26 }}>
-            Full House
-          </Text>
-        </View>
+        <Image
+          source={require('../../assets/images/fullhouse_logo.png')}
+          style={{ width: 28, height: 28, marginRight: 10 }}
+          resizeMode="contain"
+        />
+        <Text style={{ 
+          fontFamily: 'AbhayaLibre_800ExtraBold', 
+          fontSize: 26, 
+          color: '#af101a', 
+          letterSpacing: -0.8,
+          lineHeight: 30,
+          includeFontPadding: false,
+          textAlignVertical: 'center'
+        }}>
+          Full House
+        </Text>
       </View>
 
       <View style={hdr.rightRow}>
         {/* Queue Status Indicator */}
         {status === 'queued' && (
           <Animated.View style={[hdr.queuePill, { opacity: pulseAnim }]}>
-            <MaterialCommunityIcons name="cards-playing-outline" size={14} color="#fff" />
-            <Text style={hdr.queuePillText}>Finding table... {queueCount}</Text>
+            <MaterialCommunityIcons name="cards-playing-outline" size={12} color="#fff" />
+            <Text style={hdr.queuePillText}>FINDING TABLE... {queueCount}</Text>
           </Animated.View>
         )}
         {status === 'ready' && (
@@ -72,7 +78,7 @@ function FullHouseHeader() {
         )}
 
         <TouchableOpacity style={hdr.avatar} onPress={() => router.push('/settings')} activeOpacity={0.8}>
-          <User size={18} color={C.primary} />
+          <User size={18} color={C_STATIC.primary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -90,29 +96,29 @@ const hdr = StyleSheet.create({
   rightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#e5e2e1', borderWidth: 2, borderColor: C.primary,
+    backgroundColor: '#e5e2e1', borderWidth: 2, borderColor: C_STATIC.primary,
     alignItems: 'center', justifyContent: 'center',
   },
   queuePill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: C.tertiary, borderRadius: 999,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: C_STATIC.tertiary, borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 8,
   },
-  queuePillText: { fontWeight: '700', fontSize: 11, color: '#fff', letterSpacing: 0.5 },
+  queuePillText: { fontFamily: F.label, fontSize: 10, color: '#fff', letterSpacing: 1.5 },
   readyPill: {
-    backgroundColor: C.primary, borderRadius: 999,
+    backgroundColor: C_STATIC.primary, borderRadius: 999,
     paddingHorizontal: 14, paddingVertical: 8,
   },
   readyPillText: { fontWeight: '700', fontSize: 12, color: '#fff' },
 });
 
-function TabItem({ icon, label, active }: { icon: React.ReactNode; label: string; active: boolean }) {
+function TabItem({ icon, label, active, theme }: { icon: React.ReactNode; label: string; active: boolean; theme: any }) {
   return (
     <View style={{ alignItems: 'center', gap: 4 }}>
       {icon}
       <Text style={{
         fontSize: 9, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase',
-        color: active ? C.tertiary : `${C.onSurface}50`,
+        color: active ? theme.tertiary : `${theme.onSurface}50`,
       }}>
         {label}
       </Text>
@@ -121,6 +127,7 @@ function TabItem({ icon, label, active }: { icon: React.ReactNode; label: string
 }
 
 export default function TabLayout() {
+    const { theme: C } = useTheme();
   return (
     <Tabs
       screenOptions={{
@@ -144,7 +151,7 @@ export default function TabLayout() {
         options={{
           title: 'Discover',
           tabBarIcon: ({ focused }) => (
-            <TabItem label="Discover" active={focused}
+            <TabItem label="Discover" active={focused} theme={C}
               icon={<Compass size={24} color={focused ? C.tertiary : `${C.onSurface}50`} />}
             />
           ),
@@ -155,7 +162,7 @@ export default function TabLayout() {
         options={{
           title: 'Swipe',
           tabBarIcon: ({ focused }) => (
-            <TabItem label="Swipe" active={focused}
+            <TabItem label="Swipe" active={focused} theme={C}
               icon={<MaterialCommunityIcons name="cards-playing-outline" size={26} color={focused ? C.tertiary : `${C.onSurface}50`} />}
             />
           ),
@@ -166,7 +173,7 @@ export default function TabLayout() {
         options={{
           title: 'Chats',
           tabBarIcon: ({ focused }) => (
-            <TabItem label="Chats" active={focused}
+            <TabItem label="Chats" active={focused} theme={C}
               icon={<MessageSquare size={24} color={focused ? C.tertiary : `${C.onSurface}50`} />}
             />
           ),
@@ -177,7 +184,7 @@ export default function TabLayout() {
         options={{
           title: 'Meetups',
           tabBarIcon: ({ focused }) => (
-            <TabItem label="Meetups" active={focused}
+            <TabItem label="Meetups" active={focused} theme={C}
               icon={<Users size={24} color={focused ? C.tertiary : `${C.onSurface}50`} />}
             />
           ),
@@ -188,7 +195,7 @@ export default function TabLayout() {
         options={{
           title: 'Events',
           tabBarIcon: ({ focused }) => (
-            <TabItem label="Events" active={focused}
+            <TabItem label="Events" active={focused} theme={C}
               icon={<Calendar size={24} color={focused ? C.tertiary : `${C.onSurface}50`} />}
             />
           ),

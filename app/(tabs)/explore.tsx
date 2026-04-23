@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { C, F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
@@ -66,19 +67,21 @@ function SwipeCard({ profile, isTop, zIndex, onSwipe }: {
 }
 
 const cStyles = StyleSheet.create({
-  card: { position: 'absolute', width: '100%', height: '100%', backgroundColor: C.surfaceContainerLowest, borderRadius: 24, borderWidth: 8, borderColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 8, overflow: 'hidden' },
+  card: { position: 'absolute', width: '100%', height: '100%', backgroundColor: C.surfaceContainerLowest, borderRadius: 24, borderWidth: 8, borderColor: C.card, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 8, overflow: 'hidden' },
   photoWrap: { flex: 1, borderRadius: 16, overflow: 'hidden', position: 'relative', backgroundColor: C.surfaceContainerHighest },
   photo: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   scrimWrap: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%' },
   bio: { position: 'absolute', bottom: 24, left: 20, right: 20 },
-  name: { fontFamily: F.display, fontSize: 34, color: '#fff', lineHeight: 38 },
+  name: { fontFamily: F.display, fontSize: 34, color: C.card, lineHeight: 38 },
   major: { fontFamily: F.body, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginBottom: 16 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  tagText: { fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#fff' },
+  tagText: { fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: C.card },
 });
 
 export default function SwipeScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
   const { user, profile: myProfile } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<'dating' | 'friends'>('friends');
@@ -210,12 +213,12 @@ export default function SwipeScreen() {
         <View style={styles.modeToggle}>
           {showDating && (
             <TouchableOpacity style={[styles.modeBtn, mode === 'dating' && styles.modeBtnActiveDating]} onPress={() => { setMode('dating'); setMatchName(null); }} activeOpacity={0.85}>
-              <Heart size={14} color={mode === 'dating' ? '#fff' : C.onSurfaceVariant} fill={mode === 'dating' ? '#fff' : 'transparent'} />
+              <Heart size={14} color={mode === 'dating' ? C.card : C.onSurfaceVariant} fill={mode === 'dating' ? C.card : 'transparent'} />
               <Text style={[styles.modeBtnLabel, mode === 'dating' && styles.modeBtnLabelActive]}>DATING</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={[styles.modeBtn, mode === 'friends' && styles.modeBtnActiveFriends]} onPress={() => { setMode('friends'); setMatchName(null); }} activeOpacity={0.85}>
-            <Users size={14} color={mode === 'friends' ? '#fff' : C.onSurfaceVariant} />
+            <Users size={14} color={mode === 'friends' ? C.card : C.onSurfaceVariant} />
             <Text style={[styles.modeBtnLabel, mode === 'friends' && styles.modeBtnLabelActive]}>FRIENDS</Text>
           </TouchableOpacity>
         </View>
@@ -256,7 +259,7 @@ export default function SwipeScreen() {
             <X size={28} color={C.onSurface} strokeWidth={2.5} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtnPrimary} activeOpacity={0.85} onPress={() => handleSwipe(topIndex, 'right')}>
-            <Heart size={26} color="#fff" fill="#fff" />
+            <Heart size={26} color={C.onPrimary} fill={C.onPrimary} />
           </TouchableOpacity>
         </View>
       )}
@@ -277,7 +280,7 @@ export default function SwipeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surfaceContainer, alignItems: 'center', paddingHorizontal: 24, paddingTop: 16 },
   modeRow: { width: '100%', alignItems: 'center', marginBottom: 20 },
   modeToggle: { flexDirection: 'row', backgroundColor: C.surfaceContainerHigh, borderRadius: 999, padding: 6 },
@@ -285,14 +288,14 @@ const styles = StyleSheet.create({
   modeBtnActiveDating: { backgroundColor: C.primary },
   modeBtnActiveFriends: { backgroundColor: '#3b82f6' },
   modeBtnLabel: { fontFamily: F.label, fontSize: 11, letterSpacing: 2, color: C.onSurfaceVariant, paddingTop: 1 },
-  modeBtnLabelActive: { color: '#fff' },
+  modeBtnLabelActive: { color: C.card },
   deckWrapperBounds: { width: '100%', flex: 1, maxHeight: 520, marginBottom: 16, alignItems: 'center', justifyContent: 'center' },
   deckWrapper: { width: '100%', height: '100%', position: 'relative', maxWidth: 400 },
   stackCardShadow: { position: 'absolute', width: '98%', height: '100%', left: '1%', top: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(228,190,186,0.1)', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 4, zIndex: 1 },
   emptyState: { alignItems: 'center', gap: 12, marginTop: '50%' },
   emptyTitle: { fontFamily: F.display, fontSize: 26, color: C.onSurface, letterSpacing: -0.5 },
   reshuffleBtn: { backgroundColor: C.primary, paddingHorizontal: 28, paddingVertical: 16, borderRadius: 999, marginTop: 4 },
-  reshuffleBtnText: { fontFamily: F.label, color: '#fff', letterSpacing: 2, fontSize: 11 },
+  reshuffleBtnText: { fontFamily: F.label, color: C.card, letterSpacing: 2, fontSize: 11 },
   actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 16 },
   actionBtnWhite: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.surfaceContainerLowest, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
   actionBtnPrimary: { width: 68, height: 68, borderRadius: 34, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 8 },

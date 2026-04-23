@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth, Profile } from '@/hooks/useAuth';
 import { C, F, formatTimeAgo, getInitials } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +20,8 @@ type ChatPreview = {
 };
 
 export default function ChatsScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
   const { user, profile } = useAuth();
   const router = useRouter();
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -216,11 +219,11 @@ export default function ChatsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surfaceContainer },
   scrollContent: { padding: 20 },
   pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1, marginBottom: 16 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 14, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 14, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: C.outlineAlpha },
   searchInput: { flex: 1, fontFamily: F.body, fontSize: 15, color: C.onSurface },
   section: { marginBottom: 24 },
   sectionLabel: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.onSurfaceVariant, marginBottom: 12 },
@@ -233,7 +236,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontFamily: F.display, fontSize: 22, color: C.onSurface },
   emptyBody: { fontFamily: F.body, fontSize: 14, color: C.secondary, textAlign: 'center' },
-  chatRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(228,190,186,0.2)' },
+  chatRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: C.outlineAlpha },
   chatAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 14 },
   chatAvatarImg: { width: '100%', height: '100%' },
   chatInfo: { flex: 1 },

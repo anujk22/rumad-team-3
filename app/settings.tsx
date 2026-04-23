@@ -1,5 +1,6 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { C, F, formatHeight } from '@/lib/helpers';
+import { F, formatHeight } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Bell, ChevronRight, Crown, LogOut, Search, Shield, Trash2, User as UserIcon } from 'lucide-react-native';
@@ -7,6 +8,8 @@ import { useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
     const { user, profile, isAdmin, refreshProfile, signOut } = useAuth();
     const router = useRouter();
     const [showAdminModal, setShowAdminModal] = useState(false);
@@ -153,7 +156,7 @@ export default function SettingsScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Account</Text>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(setup)/profile')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/edit-profile')}>
                     <View style={styles.menuIconContainer}>
                         <UserIcon color={C.primary} size={20} />
                     </View>
@@ -183,7 +186,7 @@ export default function SettingsScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Admin</Text>
                     <TouchableOpacity style={styles.menuItem} onPress={() => setShowAdminModal(true)}>
-                        <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(112,93,0,0.1)' }]}>
+                        <View style={[styles.menuIconContainer, { backgroundColor: C.tertiaryAlpha }]}>
                             <Crown color={C.tertiary} size={20} />
                         </View>
                         <Text style={styles.menuText}>Manage Event Managers</Text>
@@ -278,18 +281,18 @@ export default function SettingsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fcf9f8' },
+const createStyles = (C: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.surface },
     content: { padding: 24, paddingTop: 20, paddingBottom: 60 },
     profileCard: {
         flexDirection: 'row', alignItems: 'center', gap: 16,
-        backgroundColor: '#ffffff', borderRadius: 20, padding: 20,
-        marginBottom: 28, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)',
+        backgroundColor: C.card, borderRadius: 20, padding: 20,
+        marginBottom: 28, borderWidth: 1, borderColor: C.outlineAlpha,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     },
     profileAvatar: {
         width: 56, height: 56, borderRadius: 28,
-        backgroundColor: 'rgba(175,16,26,0.08)',
+        backgroundColor: C.primaryAlpha,
         alignItems: 'center', justifyContent: 'center',
     },
     profileInfo: { flex: 1 },
@@ -300,33 +303,33 @@ const styles = StyleSheet.create({
     sectionTitle: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.onSurfaceVariant, textTransform: 'uppercase', marginBottom: 16 },
     toggleRow: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 10,
-        borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)',
+        backgroundColor: C.card, padding: 16, borderRadius: 12, marginBottom: 10,
+        borderWidth: 1, borderColor: C.outlineAlpha,
     },
     toggleInfo: { flex: 1 },
     toggleLabel: { fontFamily: F.bodyBold, fontSize: 15, color: C.onSurface },
     toggleDesc: { fontFamily: F.body, fontSize: 12, color: C.secondary, marginTop: 2 },
     menuItem: {
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 10,
-        borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)',
+        backgroundColor: C.card, padding: 16, borderRadius: 12, marginBottom: 10,
+        borderWidth: 1, borderColor: C.outlineAlpha,
     },
     menuIconContainer: {
         width: 36, height: 36, borderRadius: 18,
-        backgroundColor: 'rgba(175,16,26,0.08)',
+        backgroundColor: C.primaryAlpha,
         justifyContent: 'center', alignItems: 'center', marginRight: 14,
     },
     menuText: { fontFamily: F.bodyBold, color: C.onSurface, fontSize: 15, flex: 1 },
     infoRow: {
         flexDirection: 'row', justifyContent: 'space-between',
-        paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.3)',
+        paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.outlineAlpha,
     },
     infoLabel: { fontFamily: F.body, color: C.onSurface, fontSize: 15 },
     infoValue: { fontFamily: F.body, color: C.secondary, fontSize: 15 },
     bottomActions: { marginTop: 8, gap: 12 },
     signOutButton: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(175,16,26,0.08)', padding: 16,
+        backgroundColor: C.primaryAlpha, padding: 16,
         borderRadius: 12, borderWidth: 1, borderColor: 'rgba(175,16,26,0.2)', gap: 8,
     },
     signOutText: { fontFamily: F.bodyBold, color: C.primary, fontSize: 15 },
@@ -335,23 +338,23 @@ const styles = StyleSheet.create({
         padding: 16, gap: 8,
     },
     deleteText: { fontFamily: F.bodyBold, color: '#FF3B30', fontSize: 15 },
-    adminModal: { flex: 1, backgroundColor: '#fcf9f8', padding: 24, paddingTop: 20 },
+    adminModal: { flex: 1, backgroundColor: C.surface, padding: 24, paddingTop: 20 },
     adminModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     adminModalTitle: { fontFamily: F.display, fontSize: 28, color: C.onSurface },
     adminModalDesc: { fontFamily: F.body, fontSize: 14, color: C.secondary, lineHeight: 20, marginBottom: 24 },
     adminSearchRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
     adminSearchInput: {
-        flex: 1, backgroundColor: '#ffffff', height: 48, borderRadius: 12,
+        flex: 1, backgroundColor: C.card, height: 48, borderRadius: 12,
         paddingHorizontal: 16, fontFamily: F.body, fontSize: 14, color: C.onSurface,
-        borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)',
+        borderWidth: 1, borderColor: C.outlineAlpha,
     },
     adminSearchBtn: {
         width: 48, height: 48, borderRadius: 12, backgroundColor: C.primary,
         alignItems: 'center', justifyContent: 'center',
     },
     adminFoundCard: {
-        backgroundColor: '#ffffff', borderRadius: 16, padding: 20,
-        borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)',
+        backgroundColor: C.card, borderRadius: 16, padding: 20,
+        borderWidth: 1, borderColor: C.outlineAlpha,
         flexDirection: 'row', alignItems: 'center',
     },
     adminFoundInfo: { flex: 1 },
@@ -363,5 +366,5 @@ const styles = StyleSheet.create({
         backgroundColor: C.tertiary,
     },
     adminToggleBtnActive: { backgroundColor: '#FF3B30' },
-    adminToggleBtnText: { fontFamily: F.labelExtra, fontSize: 11, letterSpacing: 1, color: '#fff' },
+    adminToggleBtnText: { fontFamily: F.labelExtra, fontSize: 11, letterSpacing: 1, color: C.card },
 });

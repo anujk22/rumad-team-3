@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { decode } from 'base64-arraybuffer';
@@ -9,6 +10,8 @@ import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, Text
 const MAX_PHOTOS = 6;
 
 export default function PhotosScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
     const { user } = useAuth();
     const router = useRouter();
     const [photos, setPhotos] = useState<(string | null)[]>(Array(MAX_PHOTOS).fill(null));
@@ -151,7 +154,7 @@ export default function PhotosScreen() {
                     disabled={uploading}
                 >
                     {uploading ? (
-                        <ActivityIndicator color="#ffffff" />
+                        <ActivityIndicator color={C.onPrimary} />
                     ) : (
                         <Text style={styles.buttonText}>Continue</Text>
                     )}
@@ -165,43 +168,43 @@ export default function PhotosScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fcf9f8' },
+const createStyles = (C: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.surface },
     scrollContent: { padding: 24, paddingTop: Platform.OS === 'ios' ? 70 : 56, paddingBottom: 40 },
     stepRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
-    stepDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(228,190,186,0.5)' },
-    stepDotActive: { backgroundColor: '#af101a' },
-    eyebrow: { fontSize: 10, letterSpacing: 3, fontWeight: '700', color: '#705d00', textTransform: 'uppercase', marginBottom: 8 },
-    title: { fontSize: 40, fontWeight: '800', color: '#1b1c1c', marginBottom: 8, letterSpacing: -1 },
-    subtitle: { fontSize: 16, color: '#5f5e5e', marginBottom: 8 },
-    divider: { height: 1, backgroundColor: 'rgba(228,190,186,0.4)', marginVertical: 24 },
+    stepDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.outlineAlpha },
+    stepDotActive: { backgroundColor: C.primary },
+    eyebrow: { fontSize: 10, letterSpacing: 3, fontWeight: '700', color: C.tertiary, textTransform: 'uppercase', marginBottom: 8 },
+    title: { fontSize: 40, fontWeight: '800', color: C.onSurface, marginBottom: 8, letterSpacing: -1 },
+    subtitle: { fontSize: 16, color: C.secondary, marginBottom: 8 },
+    divider: { height: 1, backgroundColor: C.outlineAlpha, marginVertical: 24 },
     photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
     photoBox: {
         width: '30%', aspectRatio: 3 / 4, borderRadius: 16,
-        backgroundColor: '#ffffff', borderWidth: 1.5,
-        borderColor: 'rgba(228,190,186,0.4)', overflow: 'hidden',
+        backgroundColor: C.card, borderWidth: 1.5,
+        borderColor: C.outlineAlpha, overflow: 'hidden',
         justifyContent: 'center', alignItems: 'center',
     },
     primaryPhoto: { width: '62%' },
     image: { width: '100%', height: '100%' },
     addPhotoInner: { alignItems: 'center', gap: 4 },
     addPhotoPlus: { fontSize: 32, color: 'rgba(228,190,186,0.8)' },
-    addPhotoLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 2, color: '#af101a' },
+    addPhotoLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 2, color: C.primary },
     removeBtn: {
         position: 'absolute', top: 8, right: 8,
         width: 28, height: 28, borderRadius: 14,
         backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
     },
-    removeBtnText: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: -2 },
-    photoCountText: { fontSize: 13, color: '#8f6f6c', textAlign: 'center', marginBottom: 32 },
+    removeBtnText: { color: C.card, fontSize: 18, fontWeight: '700', marginTop: -2 },
+    photoCountText: { fontSize: 13, color: C.outline, textAlign: 'center', marginBottom: 32 },
     button: {
-        backgroundColor: '#af101a', height: 56, borderRadius: 14,
+        backgroundColor: C.primary, height: 56, borderRadius: 14,
         justifyContent: 'center', alignItems: 'center',
-        shadowColor: '#af101a', shadowOffset: { width: 0, height: 4 },
+        shadowColor: C.primary, shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
     },
     buttonDisabled: { backgroundColor: '#c8b0af' },
-    buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '700', letterSpacing: 2 },
+    buttonText: { color: C.card, fontSize: 16, fontWeight: '700', letterSpacing: 2 },
     skipBtn: { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
-    skipBtnText: { fontSize: 14, color: '#af101a', fontWeight: '600' },
+    skipBtnText: { fontSize: 14, color: C.primary, fontWeight: '600' },
 });

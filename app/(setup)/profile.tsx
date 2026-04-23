@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
@@ -8,6 +9,8 @@ const GENDERS = ['Man', 'Woman', 'Non-binary', 'Prefer not to say'];
 const PRONOUNS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'Other'];
 
 export default function ProfileSetupScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
     const { user } = useAuth();
     const router = useRouter();
 
@@ -66,7 +69,7 @@ export default function ProfileSetupScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="What should we call you?"
-                        placeholderTextColor="#8f6f6c"
+                        placeholderTextColor={C.outline}
                         value={firstName}
                         onChangeText={setFirstName}
                     />
@@ -75,7 +78,7 @@ export default function ProfileSetupScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="19"
-                        placeholderTextColor="#8f6f6c"
+                        placeholderTextColor={C.outline}
                         keyboardType="number-pad"
                         maxLength={2}
                         value={age}
@@ -117,43 +120,43 @@ export default function ProfileSetupScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fcf9f8' },
+const createStyles = (C: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.surface },
     scrollContent: { padding: 24, paddingTop: Platform.OS === 'ios' ? 70 : 56, paddingBottom: 40 },
     stepRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
-    stepDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(228,190,186,0.5)' },
-    stepDotActive: { backgroundColor: '#af101a' },
+    stepDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.outlineAlpha },
+    stepDotActive: { backgroundColor: C.primary },
     eyebrow: {
         fontSize: 10, letterSpacing: 3, fontWeight: '700',
-        color: '#705d00', textTransform: 'uppercase', marginBottom: 8,
+        color: C.tertiary, textTransform: 'uppercase', marginBottom: 8,
     },
-    title: { fontSize: 40, fontWeight: '800', color: '#1b1c1c', marginBottom: 8, letterSpacing: -1 },
-    subtitle: { fontSize: 16, color: '#5f5e5e', marginBottom: 8 },
-    divider: { height: 1, backgroundColor: 'rgba(228,190,186,0.4)', marginVertical: 24 },
+    title: { fontSize: 40, fontWeight: '800', color: C.onSurface, marginBottom: 8, letterSpacing: -1 },
+    subtitle: { fontSize: 16, color: C.secondary, marginBottom: 8 },
+    divider: { height: 1, backgroundColor: C.outlineAlpha, marginVertical: 24 },
     form: { marginBottom: 32 },
     label: {
-        color: '#5b403d', fontSize: 12, fontWeight: '600',
+        color: C.onSurfaceVariant, fontSize: 12, fontWeight: '600',
         marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1.5,
     },
-    optional: { color: '#8f6f6c', fontWeight: '400', textTransform: 'none', letterSpacing: 0 },
+    optional: { color: C.outline, fontWeight: '400', textTransform: 'none', letterSpacing: 0 },
     input: {
-        backgroundColor: '#ffffff', color: '#1b1c1c', height: 56,
+        backgroundColor: C.card, color: C.onSurface, height: 56,
         borderRadius: 14, paddingHorizontal: 18, fontSize: 16,
-        marginBottom: 24, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)',
+        marginBottom: 24, borderWidth: 1.5, borderColor: C.outlineAlpha,
     },
     pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
     pill: {
         paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20,
-        borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.5)', backgroundColor: '#ffffff',
+        borderWidth: 1.5, borderColor: C.outlineAlpha, backgroundColor: C.card,
     },
-    pillActive: { backgroundColor: '#af101a', borderColor: '#af101a' },
-    pillText: { color: '#5f5e5e', fontSize: 14, fontWeight: '600' },
-    pillTextActive: { color: '#ffffff' },
+    pillActive: { backgroundColor: C.primary, borderColor: C.primary },
+    pillText: { color: C.secondary, fontSize: 14, fontWeight: '600' },
+    pillTextActive: { color: C.card },
     button: {
-        backgroundColor: '#af101a', height: 56, borderRadius: 14,
+        backgroundColor: C.primary, height: 56, borderRadius: 14,
         justifyContent: 'center', alignItems: 'center',
-        shadowColor: '#af101a', shadowOffset: { width: 0, height: 4 },
+        shadowColor: C.primary, shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
     },
-    buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '700', letterSpacing: 2 },
+    buttonText: { color: C.card, fontSize: 16, fontWeight: '700', letterSpacing: 2 },
 });

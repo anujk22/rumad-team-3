@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { C, F, formatEventTime } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
@@ -20,7 +21,9 @@ type EventItem = {
 };
 
 export default function EventsScreen() {
-  const { user, isEventManager } = useAuth();
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
+  const { user, profile, isEventManager } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -132,6 +135,29 @@ export default function EventsScreen() {
     }
   };
 
+  const handleDelete = async (eventId: string) => {
+    Alert.alert(
+      'Remove Event',
+      'Are you sure you want to remove this event?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.from('events').delete().eq('id', eventId);
+              if (error) throw error;
+              await fetchEvents();
+            } catch (err: any) {
+              Alert.alert('Error', err.message);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: C.surfaceContainer, alignItems: 'center', justifyContent: 'center' }}>
@@ -189,9 +215,16 @@ export default function EventsScreen() {
                         <Text style={[styles.pillLabel, { color: C.tertiary }]}>{featured.attendee_count} GOING</Text>
                       </View>
                     </View>
-                    <TouchableOpacity style={styles.dealBtn} activeOpacity={0.85} onPress={() => handleRsvp(featured.id)}>
-                      <Text style={styles.dealBtnLabel}>{featured.am_attending ? 'FOLD' : 'DEAL ME IN'}</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity style={styles.dealBtn} activeOpacity={0.85} onPress={() => handleRsvp(featured.id)}>
+                        <Text style={styles.dealBtnLabel}>{featured.am_attending ? 'FOLD' : 'DEAL ME IN'}</Text>
+                      </TouchableOpacity>
+                      {(user?.id === featured.creator_id || profile?.role === 'admin') && (
+                        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.85} onPress={() => handleDelete(featured.id)}>
+                          <Text style={styles.deleteBtnLabel}>REMOVE</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
               </View>
@@ -218,14 +251,24 @@ export default function EventsScreen() {
                     <View style={[styles.pillOutline, { backgroundColor: 'rgba(255,225,109,0.3)' }]}>
                       <Text style={[styles.pillLabel, { color: C.tertiary }]}>{event.attendee_count} GOING</Text>
                     </View>
-                    <TouchableOpacity
-                      style={[styles.joinBtnSmall, event.am_attending && styles.joinBtnSmallActive]}
-                      onPress={() => handleRsvp(event.id)}
-                    >
-                      <Text style={[styles.joinBtnSmallText, event.am_attending && { color: '#fff' }]}>
-                        {event.am_attending ? 'GOING ✓' : 'RSVP'}
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {(user?.id === event.creator_id || profile?.role === 'admin') && (
+                        <TouchableOpacity
+                          style={styles.deleteBtnSmall}
+                          onPress={() => handleDelete(event.id)}
+                        >
+                          <Text style={styles.deleteBtnSmallText}>REMOVE</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.joinBtnSmall, event.am_attending && styles.joinBtnSmallActive]}
+                        onPress={() => handleRsvp(event.id)}
+                      >
+                        <Text style={[styles.joinBtnSmallText, event.am_attending && { color: C.card }]}>
+                          {event.am_attending ? 'GOING ✓' : 'RSVP'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -247,7 +290,7 @@ export default function EventsScreen() {
       {/* FAB only for admin/event_manager */}
       {isEventManager && (
         <TouchableOpacity style={styles.fabBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
-          <Plus size={32} color="#fff" />
+          <Plus size={32} color={C.onPrimary} />
         </TouchableOpacity>
       )}
 
@@ -290,8 +333,8 @@ export default function EventsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainer },
+const createStyles = (C: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingTop: 8, alignItems: 'center' },
   maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },
@@ -301,7 +344,7 @@ const styles = StyleSheet.create({
   relativeWrap: { position: 'relative', marginBottom: 24 },
   badgeRoyal: { position: 'absolute', top: -12, right: 0, backgroundColor: C.tertiary, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 999, zIndex: 10, transform: [{ rotate: '3deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
   badgeRoyalText: { fontFamily: F.labelExtra, fontSize: 10, color: C.onTertiary, letterSpacing: 1, textTransform: 'uppercase' },
-  featCardContainer: { backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 2, borderWidth: 1, borderColor: 'rgba(228,190,186,0.2)' },
+  featCardContainer: { backgroundColor: '#ffffff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 30, elevation: 3, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)' },
   featCardContentLayout: { gap: 24 },
   featPosterWrap: { aspectRatio: 3 / 4, borderRadius: 10, overflow: 'hidden', transform: [{ rotate: '-2deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: C.surfaceContainerHighest },
   featPosterImg: { width: '100%', height: '100%' },
@@ -315,9 +358,11 @@ const styles = StyleSheet.create({
   featMetaText: { fontFamily: F.bodyBold, fontSize: 11, color: C.onSurfaceVariant },
   pillOutline: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   pillLabel: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 0.5 },
-  dealBtn: { backgroundColor: C.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', width: '100%', marginTop: 4 },
-  dealBtnLabel: { fontFamily: F.labelExtra, color: '#fff', fontSize: 14, letterSpacing: 2 },
-  meetupCard: { backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: 'rgba(228,190,186,0.2)', position: 'relative', overflow: 'hidden' },
+  dealBtn: { flex: 1, backgroundColor: C.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4 },
+  dealBtnLabel: { fontFamily: F.labelExtra, color: C.card, fontSize: 14, letterSpacing: 2 },
+  deleteBtn: { backgroundColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 20, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)' },
+  deleteBtnLabel: { fontFamily: F.labelExtra, color: '#1b1c1c', fontSize: 14, letterSpacing: 2 },
+  meetupCard: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 2, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' },
   meetupTitle: { fontFamily: F.display, fontSize: 22, marginBottom: 8, color: C.onSurface },
   meetupDescText: { fontFamily: F.body, fontSize: 12, lineHeight: 18, color: C.onSurfaceVariant, marginBottom: 12 },
   meetupFooterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -325,6 +370,8 @@ const styles = StyleSheet.create({
   joinBtnSmall: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: C.primary },
   joinBtnSmallActive: { backgroundColor: C.primary, borderColor: C.primary },
   joinBtnSmallText: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 1, color: C.primary },
+  deleteBtnSmall: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)', backgroundColor: 'rgba(0,0,0,0.02)' },
+  deleteBtnSmallText: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 1, color: '#1b1c1c' },
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontFamily: F.display, fontSize: 22, color: `${C.onSurface}99` },
   emptyBody: { fontFamily: F.body, fontSize: 14, color: C.secondary },
@@ -333,7 +380,7 @@ const styles = StyleSheet.create({
   modalInner: { padding: 24, paddingBottom: 48 },
   modalTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitleText: { fontFamily: F.display, fontSize: 26, color: C.onSurface, letterSpacing: -0.8 },
-  modalImgUploadBox: { width: '100%', height: 260, backgroundColor: C.surfaceContainerLow, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.2)', borderStyle: 'dashed', marginBottom: 24, alignItems: 'center', justifyContent: 'center' },
+  modalImgUploadBox: { width: '100%', height: 260, backgroundColor: C.surfaceContainerLow, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: C.outlineAlpha, borderStyle: 'dashed', marginBottom: 24, alignItems: 'center', justifyContent: 'center' },
   modalInputLabel: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.onSurfaceVariant, textTransform: 'uppercase', marginBottom: 8 },
-  modalInputLine: { fontFamily: F.body, backgroundColor: C.surfaceContainerLowest, color: C.onSurface, borderRadius: 14, height: 56, paddingHorizontal: 18, fontSize: 16, marginBottom: 20, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.2)' },
+  modalInputLine: { fontFamily: F.body, backgroundColor: C.surfaceContainerLowest, color: C.onSurface, borderRadius: 14, height: 56, paddingHorizontal: 18, fontSize: 16, marginBottom: 20, borderWidth: 1.5, borderColor: C.outlineAlpha },
 });

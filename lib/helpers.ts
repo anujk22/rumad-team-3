@@ -80,6 +80,8 @@ export const C = {
   tertiary: '#705d00',
   onTertiary: '#ffffff',
   onSurfaceVariant: '#5b403d',
+  card: '#ffffff',
+  outlineAlpha: 'rgba(228,190,186,0.3)',
   error: '#ba1a1a',
 };
 

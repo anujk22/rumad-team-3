@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import {
@@ -16,22 +17,11 @@ import {
 const { width, height } = Dimensions.get('window');
 
 // Color palette matching the HTML design
-const C = {
-  surface: '#fcf9f8',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerHighest: '#e5e2e1',
-  outlineVariant: '#e4beba',
-  primary: '#af101a',
-  primaryShine: 'rgba(175,16,26,0.15)',
-  onPrimary: '#ffffff',
-  secondary: '#5f5e5e',
-  onSurface: '#1b1c1c',
-  tertiary: '#705d00',
-  onSurfaceVariant: '#5b403d',
-  surfaceContainerLow: '#f6f3f2',
-};
+
 
 export default function WelcomeScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
   const router = useRouter();
 
   // Animation values
@@ -177,7 +167,7 @@ export default function WelcomeScreen() {
 const CARD_W = 192;
 const CARD_H = 256;
 
-const styles = StyleSheet.create({
+const createStyles = (C: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: C.surface,
@@ -206,7 +196,7 @@ const styles = StyleSheet.create({
   blobTopLeft: {
     top: -80,
     left: -80,
-    backgroundColor: 'rgba(175,16,26,0.05)',
+    backgroundColor: C.primaryAlpha,
   },
   blobBottomRight: {
     bottom: -80,
@@ -244,7 +234,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.surfaceContainerHighest,
   },
   cardBack2: {
-    backgroundColor: 'rgba(228,190,186,0.3)',
+    backgroundColor: C.outlineAlpha,
   },
   cardFace: {
     width: CARD_W,
@@ -255,7 +245,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(228,190,186,0.2)',
+    borderColor: C.outlineAlpha,
     shadowColor: C.onSurface,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,

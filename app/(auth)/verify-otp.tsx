@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -15,19 +16,13 @@ import {
     View,
 } from 'react-native';
 
-const C = {
-    surface: '#fcf9f8',
-    primary: '#af101a',
-    onPrimary: '#ffffff',
-    secondary: '#5f5e5e',
-    onSurface: '#1b1c1c',
-    tertiary: '#705d00',
-    outline: '#8f6f6c',
-};
 
-const OTP_LENGTH = 6;
+
+const OTP_LENGTH = 8;
 
 export default function VerifyOtpScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
     const { email, isNewUser } = useLocalSearchParams<{ email: string; isNewUser: string }>();
     const router = useRouter();
     const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -153,7 +148,7 @@ export default function VerifyOtpScreen() {
                     <Text style={styles.eyebrow}>VERIFY YOUR EMAIL</Text>
                     <Text style={styles.headline}>Enter Code</Text>
                     <Text style={styles.subtext}>
-                        We've sent a 6-digit code to{'\n'}
+                        We've sent an 8-digit code to{'\n'}
                         <Text style={styles.emailHighlight}>{email}</Text>
                     </Text>
 
@@ -173,7 +168,6 @@ export default function VerifyOtpScreen() {
                                 onChangeText={(text) => handleDigitChange(text, i)}
                                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
                                 keyboardType="number-pad"
-                                maxLength={1}
                                 selectTextOnFocus
                                 autoFocus={i === 0}
                             />
@@ -219,45 +213,45 @@ export default function VerifyOtpScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#fcf9f8' },
+const createStyles = (C: any) => StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.surface },
     scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
     blob: { position: 'absolute', width: 280, height: 280, borderRadius: 140 },
-    blobTopLeft: { top: -60, left: -60, backgroundColor: 'rgba(175,16,26,0.05)' },
+    blobTopLeft: { top: -60, left: -60, backgroundColor: C.primaryAlpha },
     blobBottomRight: { bottom: -60, right: -60, backgroundColor: 'rgba(112,93,0,0.05)' },
     backBtn: {
         marginTop: Platform.OS === 'ios' ? 60 : 48,
         alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 2,
     },
-    backBtnText: { fontSize: 15, color: '#af101a', fontWeight: '600', letterSpacing: 0.3 },
+    backBtnText: { fontSize: 15, color: C.primary, fontWeight: '600', letterSpacing: 0.3 },
     content: { flex: 1, marginTop: 32 },
     eyebrow: {
         fontSize: 11, letterSpacing: 3.5, fontWeight: '700',
-        color: '#705d00', textTransform: 'uppercase', marginBottom: 10,
+        color: C.tertiary, textTransform: 'uppercase', marginBottom: 10,
     },
-    headline: { fontSize: 38, fontWeight: '800', color: '#1b1c1c', letterSpacing: -1, marginBottom: 8 },
-    subtext: { fontSize: 15, color: '#5f5e5e', lineHeight: 24, marginBottom: 8 },
-    emailHighlight: { color: '#af101a', fontWeight: '700' },
-    divider: { height: 1, backgroundColor: 'rgba(228,190,186,0.4)', marginVertical: 24 },
+    headline: { fontSize: 38, fontWeight: '800', color: C.onSurface, letterSpacing: -1, marginBottom: 8 },
+    subtext: { fontSize: 15, color: C.secondary, lineHeight: 24, marginBottom: 8 },
+    emailHighlight: { color: C.primary, fontWeight: '700' },
+    divider: { height: 1, backgroundColor: C.outlineAlpha, marginVertical: 24 },
     otpContainer: {
-        flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 32,
+        flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 32,
     },
     otpBox: {
-        width: 48, height: 60, borderRadius: 12, borderWidth: 2,
-        borderColor: 'rgba(228,190,186,0.5)', backgroundColor: '#ffffff',
-        textAlign: 'center', fontSize: 24, fontWeight: '800', color: '#1b1c1c',
+        width: 36, height: 52, borderRadius: 10, borderWidth: 2,
+        borderColor: C.outlineAlpha, backgroundColor: C.card,
+        textAlign: 'center', fontSize: 20, fontWeight: '800', color: C.onSurface,
     },
-    otpBoxFilled: { borderColor: '#af101a', backgroundColor: 'rgba(175,16,26,0.04)' },
+    otpBoxFilled: { borderColor: C.primary, backgroundColor: 'rgba(175,16,26,0.04)' },
     primaryBtn: {
-        width: '100%', backgroundColor: '#af101a', borderRadius: 14,
+        width: '100%', backgroundColor: C.primary, borderRadius: 14,
         paddingVertical: 20, alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#af101a', shadowOffset: { width: 0, height: 6 },
+        shadowColor: C.primary, shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.25, shadowRadius: 12, elevation: 8,
     },
     primaryBtnDisabled: { backgroundColor: '#c8b0af', shadowOpacity: 0, elevation: 0 },
-    primaryBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '700', letterSpacing: 4 },
+    primaryBtnText: { color: C.card, fontSize: 13, fontWeight: '700', letterSpacing: 4 },
     resendBtn: { marginTop: 24, alignItems: 'center', paddingVertical: 8 },
-    resendText: { fontSize: 14, color: '#af101a', fontWeight: '600' },
+    resendText: { fontSize: 14, color: C.primary, fontWeight: '600' },
     bottomBar: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 3, flexDirection: 'row', opacity: 0.3,

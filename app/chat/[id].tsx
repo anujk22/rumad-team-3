@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { C, F, getInitials } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,8 @@ type Participant = {
 };
 
 export default function ChatScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const router = useRouter();
@@ -274,7 +277,7 @@ export default function ChatScreen() {
             onPress={sendMessage}
             disabled={!input.trim() || sending}
           >
-            <Send size={18} color={input.trim() ? '#fff' : C.outline} />
+            <Send size={18} color={input.trim() ? C.card : C.outline} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -290,22 +293,22 @@ const msgStyles = StyleSheet.create({
   avatarInitials: { fontFamily: F.labelExtra, fontSize: 10, color: C.primary },
   bubble: { maxWidth: '75%', padding: 12, borderRadius: 18 },
   bubbleMine: { backgroundColor: C.primary, borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: C.surfaceContainerLowest, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)' },
+  bubbleOther: { backgroundColor: C.surfaceContainerLowest, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: C.outlineAlpha },
   senderName: { fontFamily: F.label, fontSize: 10, color: C.tertiary, marginBottom: 4 },
   text: { fontFamily: F.body, fontSize: 15, color: C.onSurface, lineHeight: 21 },
-  textMine: { color: '#fff' },
+  textMine: { color: C.card },
   time: { fontFamily: F.label, fontSize: 9, color: C.secondary, textAlign: 'right', marginTop: 4 },
   timeMine: { color: 'rgba(255,255,255,0.7)' },
   mediaImg: { width: 200, height: 200, borderRadius: 12, marginBottom: 8 },
 });
 
-const styles = StyleSheet.create({
+const createStyles = (C: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surfaceContainer },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.2)',
+    backgroundColor: C.card,
+    borderBottomWidth: 1, borderBottomColor: C.outlineAlpha,
     paddingTop: Platform.OS === 'ios' ? 8 : Platform.OS === 'web' ? 16 : 12,
   },
   backBtn: { padding: 8, marginRight: 8 },
@@ -317,8 +320,8 @@ const styles = StyleSheet.create({
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     padding: 12, paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1, borderTopColor: 'rgba(228,190,186,0.2)',
+    backgroundColor: C.card,
+    borderTopWidth: 1, borderTopColor: C.outlineAlpha,
   },
   mediaBtn: { padding: 10, borderRadius: 12, backgroundColor: C.surfaceContainerLow },
   inputField: {

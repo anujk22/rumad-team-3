@@ -35,12 +35,14 @@ function RootLayoutNav() {
       }
     } else if (profile && !profile.onboarding_completed) {
       // Logged in but hasn't completed onboarding
-      if (!inSetupGroup) {
+      if (segments[1] === 'create-password') {
+        // Let them stay on password creation
+      } else if (!inSetupGroup) {
         router.replace('/(setup)/profile');
       }
     } else if (profile && profile.onboarding_completed) {
       // Logged in and onboarding complete → go to main app
-      if (inAuthGroup || inSetupGroup) {
+      if (inAuthGroup) {
         router.replace('/(tabs)');
       }
     }
@@ -62,16 +64,8 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(setup)" options={{ headerShown: false }} />
         <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="settings"
-          options={{
-            title: 'Settings',
-            headerStyle: { backgroundColor: '#fcf9f8' },
-            headerShadowVisible: false,
-            headerTintColor: '#1b1c1c',
-            headerTitleStyle: { fontFamily: 'Newsreader_800ExtraBold', fontSize: 22 },
-          }}
-        />
+        <Stack.Screen name="settings" options={{ title: 'Settings', headerTitleAlign: 'center', headerStyle: { backgroundColor: '#fcf9f8' }, headerShadowVisible: false, headerTintColor: '#1b1c1c', headerTitleStyle: { fontFamily: 'Newsreader_700Bold', fontSize: 22 } }} />
+        <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="dark" />

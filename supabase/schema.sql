@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   height_inches INTEGER,          
   ethnicity TEXT,                 
   bio TEXT,                       
-  zodiac_sign TEXT,               
+  religion TEXT,               
   avatar_urls TEXT[] DEFAULT '{}',
   academic_year TEXT,             
   major TEXT,

@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueue } from '@/hooks/useQueue';
 import { C, F } from '@/lib/helpers';
@@ -6,8 +7,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ArrowRight, GraduationCap, Search } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Polygon } from 'react-native-svg';
+
+// --- Suits config ---
+const SUITS = [
+  { key: 'freshman',  label: 'Freshman',  icon: '♥',  accentColor: '#af101a', field: 'academic_year', value: 'Freshman' },
+  { key: 'cooking',   label: 'Cooking',   icon: '🍴', accentColor: '#705d00', field: 'tag', value: 'Cooking' },
+  { key: 'socials',   label: 'Socials',   icon: '🍸', accentColor: '#1b1c1c', field: 'tag', value: 'Social' },
+  { key: 'sports',    label: 'Sports',    icon: '⚔',  accentColor: '#8f6f6c', field: 'tag', value: 'Sports' },
+];
 
 const CustomDiamond = ({ size = 24, color = C.primary }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -56,6 +65,8 @@ const fanStyles = StyleSheet.create({
 });
 
 export default function DiscoverScreen() {
+    const { theme: C } = useTheme();
+    const styles = createStyles(C);
   const { user } = useAuth();
   const { status, joinQueue, leaveQueue } = useQueue();
   const { width } = useWindowDimensions();
@@ -64,16 +75,50 @@ export default function DiscoverScreen() {
   const [search, setSearch] = useState('');
   const [courseCode, setCourseCode] = useState('');
   const [tags, setTags] = useState<{ id: string; name: string; emoji: string }[]>([]);
+  const [suitCounts, setSuitCounts] = useState<Record<string, number>>({});
 
   const dealBtnScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     fetchTags();
+    fetchSuitCounts();
   }, []);
 
   const fetchTags = async () => {
     const { data } = await supabase.from('tags').select('*').order('name').limit(8);
     if (data) setTags(data);
+  };
+
+  const fetchSuitCounts = async () => {
+    const counts: Record<string, number> = {};
+    for (const suit of SUITS) {
+      if (suit.field === 'academic_year') {
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('onboarding_completed', true)
+          .eq('academic_year', suit.value);
+        counts[suit.key] = count || 0;
+      } else {
+        // tag-based: count profiles with a matching tag name
+        const { data: tagRow } = await supabase
+          .from('tags')
+          .select('id')
+          .ilike('name', `%${suit.value}%`)
+          .limit(1)
+          .maybeSingle();
+        if (tagRow) {
+          const { count } = await supabase
+            .from('user_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('tag_id', tagRow.id);
+          counts[suit.key] = count || 0;
+        } else {
+          counts[suit.key] = 0;
+        }
+      }
+    }
+    setSuitCounts(counts);
   };
 
   const handleDealPress = async () => {
@@ -93,24 +138,35 @@ export default function DiscoverScreen() {
     if (!courseCode.trim() || !user) return;
     // Create or join study crew chat
     const code = courseCode.trim().toUpperCase();
-    const { data: existing } = await supabase
+    const { data: existing, error: searchError } = await supabase
       .from('chats')
       .select('id')
       .eq('type', 'study_crew')
       .eq('metadata->>course_code', code)
-      .single();
+      .limit(1)
+      .maybeSingle();
+
+    if (searchError) {
+      console.error(searchError);
+    }
 
     if (existing) {
       // Join existing
-      await supabase.from('chat_participants').upsert({ chat_id: existing.id, user_id: user.id });
+      const { error: joinError } = await supabase.from('chat_participants').upsert({ chat_id: existing.id, user_id: user.id });
+      if (joinError) console.error(joinError);
       router.push(`/chat/${existing.id}` as any);
     } else {
       // Create new
-      const { data: chat } = await supabase
+      const { data: chat, error: insertError } = await supabase
         .from('chats')
         .insert({ type: 'study_crew', name: code, metadata: { course_code: code } })
         .select()
         .single();
+        
+      if (insertError) {
+        alert('Error creating chat: ' + insertError.message);
+        return;
+      }
       if (chat) {
         await supabase.from('chat_participants').insert({ chat_id: chat.id, user_id: user.id });
         router.push(`/chat/${chat.id}` as any);
@@ -142,6 +198,30 @@ export default function DiscoverScreen() {
             {status === 'queued' ? 'FINDING YOUR TABLE...' : 'MATCH WITH 3–6 STUDENTS INSTANTLY'}
           </Text>
 
+          {/* Browse Suits */}
+          <View style={styles.suitsSection}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionHeader}>Browse Suits</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/explore' as any)} activeOpacity={0.7}>
+                <Text style={styles.viewDeckText}>VIEW DECK</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.suitsGrid}>
+              {SUITS.map(suit => (
+                <TouchableOpacity
+                  key={suit.key}
+                  style={[styles.suitCard, { borderLeftColor: suit.accentColor }]}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/(tabs)/explore' as any)}
+                >
+                  <Text style={[styles.suitIcon, { color: suit.accentColor }]}>{suit.icon}</Text>
+                  <Text style={styles.suitLabel}>{suit.label}</Text>
+                  <Text style={styles.suitCount}>{suitCounts[suit.key] ?? '–'} Tables Open</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           {/* Interests */}
           <View style={styles.sectionMarginInterests}>
             <View style={styles.rowBetween}>
@@ -151,7 +231,7 @@ export default function DiscoverScreen() {
               <Search size={20} color={C.secondary} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search interests (e.g., Cooking, CS)"
+                placeholder="Search interests (e.g.ooking, CS)"
                 placeholderTextColor={C.secondary}
                 value={search}
                 onChangeText={setSearch}
@@ -201,8 +281,8 @@ export default function DiscoverScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainer },
+const createStyles = (C: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 32, alignItems: 'center' },
   maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },
@@ -211,21 +291,37 @@ const styles = StyleSheet.create({
   dealBtnQueued: { backgroundColor: C.onSurface },
   dealBtnText: { fontFamily: F.headlineBase, color: C.onPrimary, fontSize: 22, letterSpacing: 0, marginTop: 2 },
   dealSubtext: { fontFamily: F.label, textAlign: 'center', fontSize: 9, color: C.secondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionMarginInterests: { marginTop: 48, width: '100%' },
+  // Browse Suits
+  suitsSection: { marginTop: 40, width: '100%' },
+  suitsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 4 },
+  suitCard: {
+    width: '47%', backgroundColor: '#ffffff',
+    borderRadius: 20, padding: 20,
+    borderLeftWidth: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+    borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)',
+    gap: 6,
+  },
+  suitIcon: { fontSize: 22 },
+  suitLabel: { fontFamily: F.headlineBase, fontSize: 20, color: C.onSurface, lineHeight: 24 },
+  suitCount: { fontFamily: F.body, fontSize: 12, color: C.secondary },
+  viewDeckText: { fontFamily: F.label, fontSize: 10, letterSpacing: 1.5, color: C.secondary, textTransform: 'uppercase' },
+  // Interests
+  sectionMarginInterests: { marginTop: 40, width: '100%' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 },
   sectionHeader: { fontFamily: F.headlineBase, fontSize: 26, color: C.onSurface, letterSpacing: -0.5 },
-  searchBarBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceContainerLowest, borderRadius: 16, paddingHorizontal: 16, height: 54, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  searchBarBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, paddingHorizontal: 16, height: 54, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, fontFamily: F.body, fontSize: 15, color: C.onSurface, height: '100%' },
   tagsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16, marginBottom: 24 },
-  tagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surfaceContainerLowest, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)' },
+  tagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ffffff', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
   tagChipEmoji: { fontSize: 16 },
   tagChipText: { fontFamily: F.label, fontSize: 12, color: C.onSurface },
-  crewContainer: { backgroundColor: C.surfaceContainerLowest, borderRadius: 24, padding: 24, marginTop: 16, position: 'relative', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)' },
+  crewContainer: { backgroundColor: '#ffffff', borderRadius: 24, padding: 24, marginTop: 16, position: 'relative', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)' },
   crewWatermark: { position: 'absolute', top: 10, right: 10 },
   crewTitle: { fontFamily: F.headlineBase, fontSize: 28, color: C.onSurface, marginBottom: 8 },
   crewBody: { fontFamily: F.body, fontSize: 14, color: C.secondary, marginBottom: 24 },
   crewInputRow: { flexDirection: 'row', position: 'relative' },
-  crewInput: { flex: 1, backgroundColor: C.surfaceContainer, color: C.onSurface, fontFamily: F.label, fontSize: 14, height: 52, borderRadius: 12, paddingLeft: 16, paddingRight: 60, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)' },
+  crewInput: { flex: 1, backgroundColor: C.surfaceContainer, color: C.onSurface, fontFamily: F.label, fontSize: 14, height: 52, borderRadius: 12, paddingLeft: 16, paddingRight: 60, borderWidth: 1, borderColor: C.outlineAlpha },
   crewSubmitBtn: { position: 'absolute', right: 6, top: 6, width: 40, height: 40, borderRadius: 10, backgroundColor: C.tertiary, alignItems: 'center', justifyContent: 'center' },
 });

@@ -5,8 +5,8 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad', 'Transfer'];
-const ETHNICITIES = ['Asian', 'Black', 'Hispanic/Latino', 'Middle Eastern', 'White', 'Mixed', 'Other', 'Prefer not to say'];
-const ZODIAC = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+const ETHNICITIES = ['Asian', 'Caucasian', 'Hispanic/Latino', 'Middle Eastern', 'African American / Black', 'Mixed', 'Other', 'Prefer not to say'];
+const RELIGIONS = ['Agnostic', 'Atheist', 'Buddhist', 'Catholic', 'Christian', 'Hindu', 'Jewish', 'Muslim', 'Spiritual', 'Unsure', 'Other', 'Prefer not to say'];
 
 const HEIGHT_OPTIONS = (() => {
     const opts: { label: string; value: number }[] = [];
@@ -28,7 +28,7 @@ export default function DetailsScreen() {
     const [heightInches, setHeightInches] = useState<number | null>(null);
     const [showHeightPicker, setShowHeightPicker] = useState(false);
     const [ethnicity, setEthnicity] = useState('');
-    const [zodiac, setZodiac] = useState('');
+    const [religion, setReligion] = useState('');
     const [bio, setBio] = useState('');
 
     const handleContinue = async () => {
@@ -45,7 +45,7 @@ export default function DetailsScreen() {
                     major: major.trim() || null,
                     height_inches: heightInches,
                     ethnicity: ethnicity || null,
-                    zodiac_sign: zodiac || null,
+                    religion: religion || null,
                     bio: bio.trim() || null,
                     updated_at: new Date().toISOString(),
                 })
@@ -105,17 +105,19 @@ export default function DetailsScreen() {
                     </Text>
                 </TouchableOpacity>
                 {showHeightPicker && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.heightScroll} contentContainerStyle={styles.heightScrollContent}>
-                        {HEIGHT_OPTIONS.map(h => (
-                            <TouchableOpacity
-                                key={h.value}
-                                style={[styles.heightChip, heightInches === h.value && styles.heightChipActive]}
-                                onPress={() => { setHeightInches(h.value); setShowHeightPicker(false); }}
-                            >
-                                <Text style={[styles.heightChipText, heightInches === h.value && styles.heightChipTextActive]}>{h.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                    <View style={styles.dropdownContainer}>
+                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true} style={styles.verticalHeightScroll}>
+                            {HEIGHT_OPTIONS.map(h => (
+                                <TouchableOpacity
+                                    key={h.value}
+                                    style={[styles.dropdownItem, heightInches === h.value && styles.dropdownItemActive]}
+                                    onPress={() => { setHeightInches(h.value); setShowHeightPicker(false); }}
+                                >
+                                    <Text style={[styles.dropdownItemText, heightInches === h.value && styles.dropdownItemTextActive]}>{h.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
                 )}
 
                 <Text style={styles.label}>Ethnicity <Text style={styles.optional}>(optional)</Text></Text>
@@ -131,15 +133,15 @@ export default function DetailsScreen() {
                     ))}
                 </View>
 
-                <Text style={styles.label}>Zodiac Sign <Text style={styles.optional}>(optional)</Text></Text>
+                <Text style={styles.label}>Religion <Text style={styles.optional}>(optional)</Text></Text>
                 <View style={styles.pillContainer}>
-                    {ZODIAC.map(z => (
+                    {RELIGIONS.map(r => (
                         <TouchableOpacity
-                            key={z}
-                            style={[styles.pill, zodiac === z && styles.pillActive]}
-                            onPress={() => setZodiac(zodiac === z ? '' : z)}
+                            key={r}
+                            style={[styles.pill, religion === r && styles.pillActive]}
+                            onPress={() => setReligion(religion === r ? '' : r)}
                         >
-                            <Text style={[styles.pillText, zodiac === z && styles.pillTextActive]}>{z}</Text>
+                            <Text style={[styles.pillText, religion === r && styles.pillTextActive]}>{r}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -184,12 +186,12 @@ const styles = StyleSheet.create({
     pillTextActive: { color: '#ffffff' },
     pickerBtn: { backgroundColor: '#ffffff', height: 56, borderRadius: 14, paddingHorizontal: 18, justifyContent: 'center', marginBottom: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
     pickerBtnText: { fontSize: 16, color: '#1b1c1c' },
-    heightScroll: { maxHeight: 50, marginBottom: 24 },
-    heightScrollContent: { gap: 8, paddingRight: 16 },
-    heightChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(228,190,186,0.4)' },
-    heightChipActive: { backgroundColor: '#af101a', borderColor: '#af101a' },
-    heightChipText: { fontSize: 14, fontWeight: '600', color: '#5f5e5e' },
-    heightChipTextActive: { color: '#ffffff' },
+    dropdownContainer: { backgroundColor: '#ffffff', borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)', marginTop: -8, marginBottom: 24, overflow: 'hidden' },
+    verticalHeightScroll: { maxHeight: 200 },
+    dropdownItem: { paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.2)' },
+    dropdownItemActive: { backgroundColor: 'rgba(175,16,26,0.08)' },
+    dropdownItemText: { fontSize: 16, color: '#1b1c1c' },
+    dropdownItemTextActive: { color: '#af101a', fontWeight: '700' },
     charCount: { fontSize: 12, color: '#8f6f6c', textAlign: 'right', marginTop: -20, marginBottom: 24 },
     button: { backgroundColor: '#af101a', height: 56, borderRadius: 14, justifyContent: 'center', alignItems: 'center', shadowColor: '#af101a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
     buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '700', letterSpacing: 2 },
