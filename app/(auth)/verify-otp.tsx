@@ -84,7 +84,7 @@ export default function VerifyOtpScreen() {
             const { data, error } = await supabase.auth.verifyOtp({
                 email: email!,
                 token,
-                type: isNewUser === 'true' ? 'signup' : 'email',
+                type: 'magiclink',
             });
 
             if (error) {
