@@ -1,0 +1,87 @@
+<!--
+  Full House — OTP Verification Email Template
+  
+  INSTRUCTIONS:
+  1. Go to Supabase Dashboard → Authentication → Email Templates
+  2. Select "Confirm signup" template  
+  3. Replace the default template with this HTML
+  4. The {{ .Token }} variable will be replaced with the 6-digit OTP code
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#fcf9f8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fcf9f8;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="420" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+          
+          <!-- Header Bar -->
+          <tr>
+            <td style="height:4px;background:linear-gradient(90deg,#af101a 33%,#705d00 33%,#705d00 66%,#1b1c1c 66%);">
+            </td>
+          </tr>
+          
+          <!-- Logo & Title -->
+          <tr>
+            <td style="padding:40px 40px 24px;text-align:center;">
+              <div style="font-size:28px;font-weight:800;color:#1b1c1c;font-style:italic;letter-spacing:-0.5px;">
+                Full House
+              </div>
+              <div style="margin-top:4px;font-size:10px;letter-spacing:3px;color:#705d00;text-transform:uppercase;font-weight:700;">
+                EXCLUSIVE ACCESS
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding:0 40px 16px;text-align:center;">
+              <div style="font-size:16px;color:#5f5e5e;line-height:24px;">
+                Here's your verification code to join the inner circle.
+              </div>
+            </td>
+          </tr>
+          
+          <!-- OTP Code -->
+          <tr>
+            <td style="padding:16px 40px 24px;text-align:center;">
+              <div style="background-color:#fcf9f8;border:2px solid rgba(228,190,186,0.4);border-radius:12px;padding:24px;display:inline-block;">
+                <span style="font-size:36px;font-weight:800;letter-spacing:12px;color:#af101a;font-family:'Courier New',monospace;">
+                  {{ .Token }}
+                </span>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Disclaimer -->
+          <tr>
+            <td style="padding:0 40px 40px;text-align:center;">
+              <div style="font-size:13px;color:#8f6f6c;line-height:20px;">
+                This code expires in 60 minutes.<br>
+                If you didn't request this, you can safely ignore this email.
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px;text-align:center;border-top:1px solid rgba(228,190,186,0.3);">
+              <div style="font-size:12px;color:#5f5e5e;letter-spacing:4px;">
+                ♦ ♥ ♣ ♠
+              </div>
+              <div style="margin-top:4px;font-size:11px;color:#8f6f6c;font-style:italic;">
+                The Table is Set.
+              </div>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

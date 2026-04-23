@@ -1,6 +1,5 @@
-import { isRutgersEmail } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -16,33 +15,46 @@ import {
     View,
 } from 'react-native';
 
-export default function LoginScreen() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+const C = {
+    surface: '#fcf9f8',
+    primary: '#af101a',
+    onPrimary: '#ffffff',
+    secondary: '#5f5e5e',
+    onSurface: '#1b1c1c',
+    tertiary: '#705d00',
+    outline: '#8f6f6c',
+};
 
-    const handleSignIn = async () => {
-        if (!isRutgersEmail(email)) {
-            Alert.alert('Rutgers Only', 'Please use your @rutgers.edu or @scarletmail.rutgers.edu email.');
+export default function CreatePasswordScreen() {
+    const { email } = useLocalSearchParams<{ email: string }>();
+    const router = useRouter();
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSetPassword = async () => {
+        if (password.length < 6) {
+            Alert.alert('Weak Password', 'Password must be at least 6 characters.');
             return;
         }
-        if (password.length < 6) {
-            Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
+        if (password !== confirmPassword) {
+            Alert.alert('Mismatch', 'Passwords do not match.');
             return;
         }
 
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
-            password,
-        });
-        setLoading(false);
+        try {
+            const { error } = await supabase.auth.updateUser({ password });
 
-        if (error) {
-            Alert.alert('Login Failed', error.message);
+            if (error) {
+                Alert.alert('Error', error.message);
+            }
+            // Auth state change listener will detect the session and route to onboarding
+        } catch (err: any) {
+            Alert.alert('Error', err.message || 'Failed to set password.');
+        } finally {
+            setLoading(false);
         }
-        // Auth state change listener will handle routing
     };
 
     return (
@@ -50,8 +62,7 @@ export default function LoginScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.root}
         >
-            <StatusBar barStyle="dark-content" backgroundColor="#fcf9f8" />
-
+            <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
             <View style={[styles.blob, styles.blobTopLeft]} />
             <View style={[styles.blob, styles.blobBottomRight]} />
 
@@ -60,72 +71,63 @@ export default function LoginScreen() {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <Text style={styles.backBtnText}>← Back</Text>
-                </TouchableOpacity>
+                <View style={styles.topSpacer} />
 
                 <View style={styles.content}>
-                    <Text style={styles.eyebrow}>WELCOME BACK</Text>
-                    <Text style={styles.headline}>Log In</Text>
-                    <Text style={styles.subtext}>Resume your seat at the table.</Text>
+                    <Text style={styles.eyebrow}>ALMOST THERE</Text>
+                    <Text style={styles.headline}>Set Password</Text>
+                    <Text style={styles.subtext}>
+                        Create a password for{'\n'}
+                        <Text style={styles.emailHighlight}>{email}</Text>
+                        {'\n'}You'll use this to log in from now on.
+                    </Text>
 
                     <View style={styles.divider} />
-
-                    <Text style={styles.label}>Rutgers Email</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="NetID@scarletmail.rutgers.edu"
-                        placeholderTextColor="#8f6f6c"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        value={email}
-                        onChangeText={setEmail}
-                    />
 
                     <Text style={styles.label}>Password</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Your password"
-                        placeholderTextColor="#8f6f6c"
+                        placeholder="Min. 6 characters"
+                        placeholderTextColor={C.outline}
                         secureTextEntry
                         autoCapitalize="none"
                         value={password}
                         onChangeText={setPassword}
                     />
 
+                    <Text style={styles.label}>Confirm Password</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Repeat your password"
+                        placeholderTextColor={C.outline}
+                        secureTextEntry
+                        autoCapitalize="none"
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                    />
+
                     <TouchableOpacity
                         style={[
                             styles.primaryBtn,
-                            (!email || !password) && styles.primaryBtnDisabled,
+                            (!password || !confirmPassword) && styles.primaryBtnDisabled,
                         ]}
-                        onPress={handleSignIn}
-                        disabled={loading || !email || !password}
+                        onPress={handleSetPassword}
+                        disabled={loading || !password || !confirmPassword}
                         activeOpacity={0.85}
                     >
                         {loading ? (
-                            <ActivityIndicator color="#ffffff" />
+                            <ActivityIndicator color={C.onPrimary} />
                         ) : (
-                            <Text style={styles.primaryBtnText}>LOG IN</Text>
+                            <Text style={styles.primaryBtnText}>COMPLETE SIGNUP</Text>
                         )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.linkBtn}
-                        onPress={() => router.push('/(auth)/signup')}
-                    >
-                        <Text style={styles.linkBtnText}>
-                            New here?{' '}
-                            <Text style={styles.linkBtnAccent}>Create an account</Text>
-                        </Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
 
             <View style={styles.bottomBar}>
-                <View style={[styles.bottomBarSegment, { backgroundColor: '#af101a' }]} />
-                <View style={[styles.bottomBarSegment, { backgroundColor: '#705d00' }]} />
-                <View style={[styles.bottomBarSegment, { backgroundColor: '#1b1c1c' }]} />
+                <View style={[styles.bottomBarSegment, { backgroundColor: C.primary }]} />
+                <View style={[styles.bottomBarSegment, { backgroundColor: C.tertiary }]} />
+                <View style={[styles.bottomBarSegment, { backgroundColor: C.onSurface }]} />
             </View>
         </KeyboardAvoidingView>
     );
@@ -137,18 +139,15 @@ const styles = StyleSheet.create({
     blob: { position: 'absolute', width: 280, height: 280, borderRadius: 140 },
     blobTopLeft: { top: -60, left: -60, backgroundColor: 'rgba(175,16,26,0.05)' },
     blobBottomRight: { bottom: -60, right: -60, backgroundColor: 'rgba(112,93,0,0.05)' },
-    backBtn: {
-        marginTop: Platform.OS === 'ios' ? 60 : 48,
-        alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 2,
-    },
-    backBtnText: { fontSize: 15, color: '#af101a', fontWeight: '600', letterSpacing: 0.3 },
-    content: { flex: 1, marginTop: 32 },
+    topSpacer: { height: Platform.OS === 'ios' ? 80 : 64 },
+    content: { flex: 1 },
     eyebrow: {
         fontSize: 11, letterSpacing: 3.5, fontWeight: '700',
         color: '#705d00', textTransform: 'uppercase', marginBottom: 10,
     },
     headline: { fontSize: 38, fontWeight: '800', color: '#1b1c1c', letterSpacing: -1, marginBottom: 8 },
-    subtext: { fontSize: 15, color: '#5f5e5e', lineHeight: 22, marginBottom: 8 },
+    subtext: { fontSize: 15, color: '#5f5e5e', lineHeight: 24, marginBottom: 8 },
+    emailHighlight: { color: '#af101a', fontWeight: '700' },
     divider: { height: 1, backgroundColor: 'rgba(228,190,186,0.4)', marginVertical: 24 },
     label: {
         fontSize: 12, fontWeight: '600', letterSpacing: 1.5,
@@ -168,9 +167,6 @@ const styles = StyleSheet.create({
     },
     primaryBtnDisabled: { backgroundColor: '#c8b0af', shadowOpacity: 0, elevation: 0 },
     primaryBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '700', letterSpacing: 4 },
-    linkBtn: { marginTop: 20, alignItems: 'center', paddingVertical: 8 },
-    linkBtnText: { fontSize: 14, color: '#5f5e5e' },
-    linkBtnAccent: { color: '#af101a', fontWeight: '700' },
     bottomBar: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 3, flexDirection: 'row', opacity: 0.3,

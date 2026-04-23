@@ -1,153 +1,268 @@
 -- ============================================================
--- Full House — Supabase Schema
+-- Full House — Supabase Schema (Complete Rewrite)
 -- Rutgers-exclusive social platform
 -- ============================================================
 
--- Enable pgcrypto for UUID generation if not already enabled
+-- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Drop existing tables to ensure a clean slate
+DROP TABLE IF EXISTS public.event_attendees CASCADE;
+DROP TABLE IF EXISTS public.events CASCADE;
+DROP TABLE IF EXISTS public.meetup_attendees CASCADE;
+DROP TABLE IF EXISTS public.meetups CASCADE;
+DROP TABLE IF EXISTS public.live_queue CASCADE;
+DROP TABLE IF EXISTS public.messages CASCADE;
+DROP TABLE IF EXISTS public.chat_participants CASCADE;
+DROP TABLE IF EXISTS public.chats CASCADE;
+DROP TABLE IF EXISTS public.swipes CASCADE;
+DROP TABLE IF EXISTS public.user_tags CASCADE;
+DROP TABLE IF EXISTS public.tags CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
 -- ============================================================
--- 🔒 RUTGERS EMAIL ENFORCEMENT
--- DB-level guard: only @rutgers.edu emails may sign up.
--- This complements the app-level check in the auth screens.
+-- RUTGERS EMAIL ENFORCEMENT
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.enforce_rutgers_email()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  IF NEW.email NOT LIKE '%@rutgers.edu' THEN
-    RAISE EXCEPTION 'Only @rutgers.edu email addresses are allowed to register.';
+  IF NEW.email NOT LIKE '%@rutgers.edu'
+     AND NEW.email NOT LIKE '%@scarletmail.rutgers.edu' THEN
+    RAISE EXCEPTION 'Only Rutgers email addresses are allowed to register.';
   END IF;
   RETURN NEW;
 END;
 $$;
 
--- Fire before every new auth user insert
 DROP TRIGGER IF EXISTS rutgers_email_gate ON auth.users;
 CREATE TRIGGER rutgers_email_gate
   BEFORE INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.enforce_rutgers_email();
 
 -- ============================================================
--- Profiles table: Extended user attributes
+-- 1. TABLE DEFINITIONS
 -- ============================================================
-CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
+
+-- PROFILES
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
+  email TEXT,
   first_name TEXT,
   age INTEGER,
+  gender TEXT,                    
+  gender_preference TEXT,         
+  pronouns TEXT,                  
+  height_inches INTEGER,          
+  ethnicity TEXT,                 
+  bio TEXT,                       
+  zodiac_sign TEXT,               
   avatar_urls TEXT[] DEFAULT '{}',
-  academic_year TEXT,   -- 'Freshman' | 'Sophomore' | 'Junior' | 'Senior' | 'Grad'
+  academic_year TEXT,             
   major TEXT,
   is_commuter BOOLEAN DEFAULT false,
   is_international BOOLEAN DEFAULT false,
-  app_mode TEXT DEFAULT 'friend' CHECK (app_mode IN ('friend', 'dating')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  dating_enabled BOOLEAN DEFAULT false,
+  friends_enabled BOOLEAN DEFAULT true,
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'event_manager', 'admin')),
+  onboarding_completed BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Row Level Security for Profiles
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can insert their own profile." ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USING (auth.uid() = id);
+-- Auto-create profile on signup trigger
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email)
+  VALUES (NEW.id, NEW.email);
+  RETURN NEW;
+END;
+$$;
 
--- Tags
-CREATE TABLE public.tags (
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- TAGS
+CREATE TABLE IF NOT EXISTS public.tags (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT UNIQUE NOT NULL
+  name TEXT UNIQUE NOT NULL,
+  emoji TEXT DEFAULT ''
 );
 
--- Initial seed for Tags
-INSERT INTO public.tags (name) VALUES 
-('Gym'), ('Boba'), ('Cooking'), ('Anime'), ('Nightlife'), 
-('Tech'), ('Sports'), ('Photography'), ('Music'), ('Gaming')
+INSERT INTO public.tags (name, emoji) VALUES
+  ('Gym', '💪'), ('Boba', '🧋'), ('Cooking', '🍳'), ('Anime', '🎌'),
+  ('Nightlife', '🌃'), ('Tech', '💻'), ('Sports', '⚽'), ('Photography', '📸'),
+  ('Music', '🎵'), ('Gaming', '🎮'), ('Art', '🎨'), ('Reading', '📚'),
+  ('Travel', '✈️'), ('Movies', '🎬'), ('Fashion', '👗'), ('Hiking', '🥾'),
+  ('Dance', '💃'), ('Volunteering', '🤝'), ('Startups', '🚀'), ('Podcasts', '🎙️'),
+  ('Thrifting', '🛍️'), ('Coffee', '☕'), ('Yoga', '🧘'), ('Board Games', '🎲'),
+  ('Cars', '🏎️')
 ON CONFLICT (name) DO NOTHING;
 
--- User Tags Junction Table
-CREATE TABLE public.user_tags (
+-- USER TAGS
+CREATE TABLE IF NOT EXISTS public.user_tags (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   tag_id UUID REFERENCES public.tags(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, tag_id)
 );
 
--- Row Level Security for User Tags
-ALTER TABLE public.user_tags ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "User tags are viewable by everyone." ON public.user_tags FOR SELECT USING (true);
-CREATE POLICY "Users can manage their own tags" ON public.user_tags FOR ALL USING (auth.uid() = user_id);
-
--- Swipes
-CREATE TABLE public.swipes (
+-- SWIPES
+CREATE TABLE IF NOT EXISTS public.swipes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   swiper_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   swiped_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   is_right_swipe BOOLEAN NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(swiper_id, swiped_id)
+  mode TEXT NOT NULL CHECK (mode IN ('dating', 'friends')),
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  UNIQUE(swiper_id, swiped_id, mode)
 );
 
--- Chats
-CREATE TYPE chat_type AS ENUM ('direct', 'study_crew', 'spontaneous');
-CREATE TABLE public.chats (
+-- CHATS
+CREATE TABLE IF NOT EXISTS public.chats (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  type chat_type NOT NULL,
-  metadata JSONB, -- storing course code or spontaneous group name
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  type TEXT NOT NULL CHECK (type IN ('direct', 'spontaneous', 'study_crew')),
+  name TEXT,                
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Chat Participants
-CREATE TABLE public.chat_participants (
+-- CHAT PARTICIPANTS
+CREATE TABLE IF NOT EXISTS public.chat_participants (
   chat_id UUID REFERENCES public.chats(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   PRIMARY KEY (chat_id, user_id)
 );
 
--- Messages
-CREATE TABLE public.messages (
+-- MESSAGES
+CREATE TABLE IF NOT EXISTS public.messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   chat_id UUID REFERENCES public.chats(id) ON DELETE CASCADE NOT NULL,
   sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  content TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  content TEXT NOT NULL DEFAULT '',
+  media_url TEXT,             
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Meetups
-CREATE TYPE meetup_tier AS ENUM ('core', 'casual');
-CREATE TABLE public.meetups (
+-- LIVE QUEUE
+CREATE TABLE IF NOT EXISTS public.live_queue (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  joined_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- MEETUPS
+CREATE TABLE IF NOT EXISTS public.meetups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   creator_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   location TEXT NOT NULL,
   description TEXT,
-  meetup_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  tier meetup_tier NOT NULL,
-  max_capacity INTEGER NOT NULL,
-  status TEXT DEFAULT 'open',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  meetup_time TIMESTAMPTZ NOT NULL,
+  max_capacity INTEGER DEFAULT 20,
+  image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Meetup Attendees
-CREATE TABLE public.meetup_attendees (
+-- MEETUP ATTENDEES
+CREATE TABLE IF NOT EXISTS public.meetup_attendees (
   meetup_id UUID REFERENCES public.meetups(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  status TEXT DEFAULT 'rsvped', -- 'rsvped', 'verified'
-  joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   PRIMARY KEY (meetup_id, user_id)
 );
 
--- Events
-CREATE TABLE public.events (
+-- EVENTS
+CREATE TABLE IF NOT EXISTS public.events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   creator_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   location TEXT NOT NULL,
   description TEXT,
-  event_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  event_time TIMESTAMPTZ NOT NULL,
   poster_url TEXT,
-  is_verified_org_event BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Storage configuration for profile avatars and event posters
--- Insert storage buckets if not running through migrations (manual setup required in Dashboard usually, but keeping as a note)
--- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
--- insert into storage.buckets (id, name, public) values ('posters', 'posters', true);
+-- EVENT ATTENDEES
+CREATE TABLE IF NOT EXISTS public.event_attendees (
+  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  PRIMARY KEY (event_id, user_id)
+);
+
+-- ============================================================
+-- 2. ROW LEVEL SECURITY POLICIES
+-- ============================================================
+
+-- Profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Profiles are viewable by authenticated users" ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins can update any profile" ON public.profiles FOR UPDATE USING ( EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') );
+
+-- Tags
+ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Tags are viewable by everyone" ON public.tags FOR SELECT USING (true);
+
+-- User Tags
+ALTER TABLE public.user_tags ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "User tags are viewable by authenticated users" ON public.user_tags FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can insert their own tags" ON public.user_tags FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own tags" ON public.user_tags FOR DELETE USING (auth.uid() = user_id);
+
+-- Swipes
+ALTER TABLE public.swipes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own swipes" ON public.swipes FOR SELECT USING (auth.uid() = swiper_id OR auth.uid() = swiped_id);
+CREATE POLICY "Users can insert their own swipes" ON public.swipes FOR INSERT WITH CHECK (auth.uid() = swiper_id);
+
+-- Chats
+ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view chats they participate in" ON public.chats FOR SELECT USING ( EXISTS (SELECT 1 FROM public.chat_participants WHERE chat_id = id AND user_id = auth.uid()) );
+CREATE POLICY "Authenticated users can create chats" ON public.chats FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Chat Participants
+ALTER TABLE public.chat_participants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view participants in their chats" ON public.chat_participants FOR SELECT USING ( EXISTS (SELECT 1 FROM public.chat_participants cp WHERE cp.chat_id = chat_participants.chat_id AND cp.user_id = auth.uid()) );
+CREATE POLICY "Authenticated users can join chats" ON public.chat_participants FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Messages
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view messages in their chats" ON public.messages FOR SELECT USING ( EXISTS (SELECT 1 FROM public.chat_participants WHERE chat_id = messages.chat_id AND user_id = auth.uid()) );
+CREATE POLICY "Users can insert messages in their chats" ON public.messages FOR INSERT WITH CHECK ( auth.uid() = sender_id AND EXISTS (SELECT 1 FROM public.chat_participants WHERE chat_id = messages.chat_id AND user_id = auth.uid()) );
+
+-- Live Queue
+ALTER TABLE public.live_queue ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Queue is viewable by authenticated users" ON public.live_queue FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can join queue" ON public.live_queue FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can leave queue" ON public.live_queue FOR DELETE USING (auth.uid() = user_id);
+
+-- Meetups
+ALTER TABLE public.meetups ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Meetups are viewable by authenticated users" ON public.meetups FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can create meetups" ON public.meetups FOR INSERT WITH CHECK (auth.uid() = creator_id);
+CREATE POLICY "Creators can update their meetups" ON public.meetups FOR UPDATE USING (auth.uid() = creator_id);
+CREATE POLICY "Creators can delete their meetups" ON public.meetups FOR DELETE USING (auth.uid() = creator_id);
+
+-- Meetup Attendees
+ALTER TABLE public.meetup_attendees ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Attendees are viewable by authenticated users" ON public.meetup_attendees FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can join meetups" ON public.meetup_attendees FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can leave meetups" ON public.meetup_attendees FOR DELETE USING (auth.uid() = user_id);
+
+-- Events
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Events are viewable by authenticated users" ON public.events FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins and event managers can create events" ON public.events FOR INSERT WITH CHECK ( EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'event_manager')) );
+CREATE POLICY "Creators can update their events" ON public.events FOR UPDATE USING (auth.uid() = creator_id);
+CREATE POLICY "Creators can delete their events" ON public.events FOR DELETE USING (auth.uid() = creator_id);
+
+-- Event Attendees
+ALTER TABLE public.event_attendees ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Event attendees are viewable by authenticated users" ON public.event_attendees FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can RSVP to events" ON public.event_attendees FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can un-RSVP from events" ON public.event_attendees FOR DELETE USING (auth.uid() = user_id);

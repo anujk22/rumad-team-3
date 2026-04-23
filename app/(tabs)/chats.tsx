@@ -1,267 +1,216 @@
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, Profile } from '@/hooks/useAuth';
+import { C, F, formatTimeAgo, getInitials } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { PlusCircle, UserPlus, Star } from 'lucide-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { MessageSquare, Search, User } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const C = {
-  surfaceContainer: '#f0eded',
-  surfaceContainerLow: '#f6f3f2',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerHighest: '#e5e2e1',
-  outlineVariant: 'rgba(228,190,186,0.8)',
-  outline: '#8f6f6c',
-  primary: '#af101a',
-  onPrimary: '#ffffff',
-  secondary: '#5f5e5e',
-  onSurface: '#1b1c1c',
-  tertiary: '#705d00',
-  tertiaryContainer: '#c9a900',
-  onTertiaryContainer: '#4c3f00',
-};
-
-const F = {
-  headline: 'AbhayaLibre_800ExtraBold',
-  body: 'Manrope_400Regular',
-  bodyBold: 'Manrope_700Bold',
-  label: 'PlusJakartaSans_700Bold',
-  labelExtra: 'PlusJakartaSans_800ExtraBold',
-};
-
-type Friend = {
+type ChatPreview = {
   id: string;
-  first_name: string;
-  avatar_url: string;
-  suit: 'heart' | 'spade' | 'diamond' | 'club';
+  type: string;
+  name: string | null;
+  last_message: string;
+  last_message_time: string;
+  other_user_name: string;
+  other_user_avatar: string | null;
+  participant_count: number;
 };
-
-const MOCK_FRIENDS: Friend[] = [
-  { id: 'f1', first_name: 'Sophia', avatar_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=80', suit: 'heart' },
-  { id: 'f2', first_name: 'Marcus', avatar_url: 'https://images.unsplash.com/photo-1549471156-52ee71691122?w=800&q=80', suit: 'spade' },
-  { id: 'f3', first_name: 'Elena', avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=80', suit: 'diamond' },
-  { id: 'f4', first_name: 'Julian', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=80', suit: 'club' },
-];
-
-type ChatItem = {
-  id: string;
-  type: 'direct' | 'group' | 'inactive';
-  name: string;
-  avatar_url?: string;
-  lastMessage: string;
-  timeAgo: string;
-  suit: 'heart' | 'spade' | 'diamond' | 'club' | 'star';
-  unread?: boolean;
-};
-
-const MOCK_CHATS: ChatItem[] = [
-  { id: 'c1', type: 'direct', name: 'Sophia R.', avatar_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=80', lastMessage: 'That jazz club last night was ama...', timeAgo: '2M AGO', suit: 'heart', unread: true },
-  { id: 'c2', type: 'group', name: "Architecture '27 Deck", lastMessage: "Leo: Who's in the studio right now?", timeAgo: '15M AGO', suit: 'star', unread: false },
-  { id: 'c3', type: 'direct', name: 'Marcus King', avatar_url: 'https://images.unsplash.com/photo-1549471156-52ee71691122?w=800&q=80', lastMessage: 'Ready for the finals next week?', timeAgo: '1H AGO', suit: 'spade', unread: false },
-  { id: 'c4', type: 'direct', name: 'Elena V.', avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=80', lastMessage: "It's a deal! Coffee at 4.", timeAgo: '3H AGO', suit: 'diamond', unread: false },
-  { id: 'c5', type: 'inactive', name: 'Julian M.', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=80', lastMessage: 'See you around campus!', timeAgo: '1D AGO', suit: 'club', unread: false },
-];
 
 export default function ChatsScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-
-  const [activeFriends, setActiveFriends] = useState<Friend[]>([]);
-  const [chatRooms, setChatRooms] = useState<ChatItem[]>([]);
+  const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user) {
+      fetchChats();
+      // Subscribe to new messages
+      const channel = supabase
+        .channel('chats-realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+          fetchChats();
+        })
+        .subscribe();
 
-  const fetchData = async () => {
-    setTimeout(() => {
-      setActiveFriends(MOCK_FRIENDS);
-      setChatRooms(MOCK_CHATS);
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [user]);
+
+  const fetchChats = async () => {
+    if (!user) return;
+    try {
+      // Get chat IDs user participates in
+      const { data: participantData } = await supabase
+        .from('chat_participants')
+        .select('chat_id')
+        .eq('user_id', user.id);
+
+      if (!participantData || participantData.length === 0) {
+        setChats([]);
+        setLoading(false);
+        return;
+      }
+
+      const chatIds = participantData.map(p => p.chat_id);
+
+      // Get chat details
+      const { data: chatData } = await supabase
+        .from('chats')
+        .select('id, type, name')
+        .in('id', chatIds);
+
+      const previews: ChatPreview[] = [];
+
+      for (const chat of chatData || []) {
+        // Get latest message
+        const { data: msgData } = await supabase
+          .from('messages')
+          .select('content, created_at, sender_id')
+          .eq('chat_id', chat.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        // Get other participants
+        const { data: partData } = await supabase
+          .from('chat_participants')
+          .select('user_id, profiles(first_name, avatar_urls)')
+          .eq('chat_id', chat.id)
+          .neq('user_id', user.id);
+
+        const otherUser = (partData && partData[0]) as any;
+        const participantCount = (partData?.length || 0) + 1;
+        const lastMsg = msgData?.[0];
+
+        previews.push({
+          id: chat.id,
+          type: chat.type,
+          name: chat.name || otherUser?.profiles?.first_name || 'Chat',
+          last_message: lastMsg?.content || 'No messages yet',
+          last_message_time: lastMsg?.created_at || new Date().toISOString(),
+          other_user_name: otherUser?.profiles?.first_name || 'User',
+          other_user_avatar: otherUser?.profiles?.avatar_urls?.[0] || null,
+          participant_count: participantCount,
+        });
+      }
+
+      // Sort by most recent message
+      previews.sort((a, b) => new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime());
+      setChats(previews);
+    } catch (err) {
+      console.error('Error fetching chats:', err);
+    } finally {
       setLoading(false);
-    }, 400);
-  };
-
-  const getSuitIcon = (suit: string, size = 10) => {
-    switch (suit) {
-      case 'heart': return <MaterialCommunityIcons name="cards-heart" size={size} color="#fff" />;
-      case 'spade': return <MaterialCommunityIcons name="cards-spade" size={size} color="#fff" />;
-      case 'diamond': return <MaterialCommunityIcons name="cards-diamond" size={size} color="#fff" />;
-      case 'club': return <MaterialCommunityIcons name="cards-club" size={size} color="#fff" />;
-      case 'star': return <Star size={size} color="#fff" fill="#fff" />;
-      default: return null;
     }
   };
 
-  const getSuitBgColor = (suit: string) => {
-    switch (suit) {
-      case 'heart':
-      case 'diamond': return C.primary;
-      case 'star': return C.tertiary;
-      case 'club':
-      case 'spade': return C.onSurface;
-      default: return C.secondary;
-    }
-  };
+  const filteredChats = chats.filter(c =>
+    !search || c.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const getSuitRingColor = (suit: string) => {
-    switch (suit) {
-      case 'heart':
-      case 'diamond': return `${C.primary}33`; // Faint primary ring 
-      default: return `${C.onSurface}1A`; // Faint grey ring
-    }
-  };
+  const directChats = filteredChats.filter(c => c.type === 'direct');
+  const groupChats = filteredChats.filter(c => c.type !== 'direct');
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator color={C.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.maxWidthContainer}>
-          
-          {/* ── Section Title ── */}
-          <View style={styles.pageHeader}>
-            <Text style={styles.eyebrow}>YOUR INBOX</Text>
-            <Text style={styles.pageTitle}>Chats</Text>
-          </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.pageTitle}>Chats</Text>
 
-          {loading ? (
-            <ActivityIndicator color={C.primary} size="large" style={{ marginTop: 40 }} />
-          ) : (
-            <>
-              {/* ── Friends List (Inner Circle) ── */}
-              <View style={styles.friendsSection}>
-                <View style={styles.friendsHeader}>
-                  <Text style={styles.friendsTitle}>Inner Circle</Text>
-                  <TouchableOpacity style={styles.addFriendBtn} activeOpacity={0.7}>
-                    <PlusCircle size={14} color={C.primary} />
-                    <Text style={styles.addFriendText}>ADD FRIEND</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.friendsScroll}
-                >
-                  {/* Invite Slot */}
-                  <TouchableOpacity style={styles.friendCol} activeOpacity={0.7}>
-                    <View style={styles.inviteRing}>
-                      <View style={styles.inviteInner}>
-                        <UserPlus size={24} color={C.secondary} />
-                      </View>
-                    </View>
-                    <Text style={[styles.friendName, { color: C.secondary }]}>Invite</Text>
-                  </TouchableOpacity>
-
-                  {/* Active Friends */}
-                  {activeFriends.map(friend => (
-                    <TouchableOpacity key={friend.id} style={styles.friendCol} activeOpacity={0.8}>
-                      <View style={[styles.friendRing, { borderColor: getSuitRingColor(friend.suit) }]}>
-                        <Image source={{ uri: friend.avatar_url }} style={styles.friendAvatar} />
-                        {friend.suit !== 'club' && (
-                          <View style={[styles.friendSuitBadge, { backgroundColor: getSuitBgColor(friend.suit) }]}>
-                            {getSuitIcon(friend.suit, 8)}
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[styles.friendName, friend.suit === 'club' ? { color: C.secondary } : {}]}>
-                        {friend.first_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* ── Chat List (Active Tables) ── */}
-              <View style={styles.chatsSection}>
-                <Text style={styles.chatsTitle}>Active Tables</Text>
-
-                <View style={styles.chatList}>
-                  {chatRooms.map((chat) => {
-                    const isInactive = chat.type === 'inactive';
-                    const isGroup = chat.type === 'group';
-
-                    return (
-                      <TouchableOpacity
-                        key={chat.id}
-                        style={[
-                          styles.chatCard,
-                          isInactive && { backgroundColor: C.surfaceContainer, shadowOpacity: 0, borderWidth: 0 }
-                        ]}
-                        activeOpacity={0.85}
-                      >
-                        {/* Avatar Cell */}
-                        <View style={styles.chatAvatarRel}>
-                          {isGroup ? (
-                            <View style={styles.groupAvatarGrid}>
-                              <Image source={{ uri: MOCK_FRIENDS[0].avatar_url }} style={styles.groupAvatarImg} />
-                              <Image source={{ uri: MOCK_FRIENDS[1].avatar_url }} style={styles.groupAvatarImg} />
-                              <Image source={{ uri: MOCK_FRIENDS[2].avatar_url }} style={styles.groupAvatarImg} />
-                              <View style={styles.groupAvatarCount}>
-                                <Text style={styles.groupAvatarCountText}>+8</Text>
-                              </View>
-                            </View>
-                          ) : (
-                            <Image
-                              source={{ uri: chat.avatar_url }}
-                              style={[styles.chatAvatarImg, isInactive && { opacity: 0.5 }]}
-                            />
-                          )}
-
-                          {/* Top-Left Overlap Badge */}
-                          <View style={[styles.chatSuitBadge, { backgroundColor: isInactive ? C.secondary : getSuitBgColor(chat.suit) }]}>
-                            {getSuitIcon(chat.suit, 12)}
-                          </View>
-                        </View>
-
-                        {/* Content Cell */}
-                        <View style={styles.chatContent}>
-                          <View style={styles.chatHeaderRow}>
-                            <Text style={[styles.chatName, isInactive && { color: C.secondary }]}>{chat.name}</Text>
-                            <Text style={styles.chatTime}>{chat.timeAgo}</Text>
-                          </View>
-                          <Text
-                            style={[
-                              styles.chatMessage,
-                              isGroup && !isInactive ? { fontFamily: F.bodyBold, color: C.onSurface } : {}
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {chat.lastMessage}
-                          </Text>
-                        </View>
-
-                        {/* Unread Indicator */}
-                        {chat.unread && (
-                          <View style={styles.unreadDotBox}>
-                            <View style={styles.unreadDot} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-            </>
-          )}
-
-          <View style={{ height: 100 }} />
+        {/* Search */}
+        <View style={styles.searchBox}>
+          <Search size={18} color={C.secondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search conversations..."
+            placeholderTextColor={C.secondary}
+            value={search}
+            onChangeText={setSearch}
+          />
         </View>
+
+        {/* Inner Circle (Direct Matches) */}
+        {directChats.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>INNER CIRCLE</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.circleScroll}>
+              {directChats.map(chat => (
+                <TouchableOpacity
+                  key={chat.id}
+                  style={styles.circleItem}
+                  onPress={() => router.push(`/chat/${chat.id}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.circleAvatar}>
+                    {chat.other_user_avatar ? (
+                      <Image source={{ uri: chat.other_user_avatar }} style={styles.circleAvatarImg} />
+                    ) : (
+                      <Text style={styles.circleInitials}>{getInitials(chat.other_user_name)}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.circleName} numberOfLines={1}>{chat.other_user_name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* All Conversations */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CONVERSATIONS</Text>
+          {filteredChats.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="chat-outline" size={48} color={C.outlineVariant} />
+              <Text style={styles.emptyTitle}>No conversations yet</Text>
+              <Text style={styles.emptyBody}>Swipe right or hit "Deal Me In" to start chatting!</Text>
+            </View>
+          ) : (
+            filteredChats.map(chat => (
+              <TouchableOpacity
+                key={chat.id}
+                style={styles.chatRow}
+                onPress={() => router.push(`/chat/${chat.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.chatAvatar}>
+                  {chat.type === 'direct' && chat.other_user_avatar ? (
+                    <Image source={{ uri: chat.other_user_avatar }} style={styles.chatAvatarImg} />
+                  ) : chat.type === 'spontaneous' ? (
+                    <MaterialCommunityIcons name="cards-playing" size={22} color={C.primary} />
+                  ) : chat.type === 'study_crew' ? (
+                    <MaterialCommunityIcons name="school" size={22} color={C.tertiary} />
+                  ) : (
+                    <User size={22} color={C.outline} />
+                  )}
+                </View>
+                <View style={styles.chatInfo}>
+                  <View style={styles.chatTopRow}>
+                    <Text style={styles.chatName} numberOfLines={1}>
+                      {chat.type === 'direct' ? chat.other_user_name : chat.name}
+                    </Text>
+                    <Text style={styles.chatTime}>{formatTimeAgo(chat.last_message_time)}</Text>
+                  </View>
+                  <Text style={styles.chatPreview} numberOfLines={1}>{chat.last_message}</Text>
+                  {chat.participant_count > 2 && (
+                    <Text style={styles.chatParticipants}>{chat.participant_count} members</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -269,224 +218,28 @@ export default function ChatsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surfaceContainer },
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingTop: 16, alignItems: 'center' },
-  maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },
-
-  // Header Title
-  pageHeader: { marginBottom: 32, gap: 4 },
-  eyebrow: {
-    fontFamily: F.labelExtra,
-    fontSize: 10,
-    letterSpacing: 2,
-    color: C.tertiary, // Olive Gold matching screenshot
-    textTransform: 'uppercase',
-  },
-  pageTitle: {
-    fontFamily: F.headline,
-    fontSize: 48,
-    color: C.onSurface,
-    letterSpacing: -1,
-  },
-
-  // Friends Section (Inner Circle)
-  friendsSection: { marginBottom: 40 },
-  friendsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 20,
-  },
-  friendsTitle: {
-    fontFamily: F.headline,
-    fontSize: 24,
-    color: C.onSurface,
-    fontStyle: 'italic',
-  },
-  addFriendBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  addFriendText: {
-    fontFamily: F.labelExtra,
-    fontSize: 10,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: C.primary,
-  },
-
-  friendsScroll: {
-    gap: 20, 
-    paddingRight: 16,
-  },
-  friendCol: {
-    alignItems: 'center',
-    gap: 12,
-    width: 68,
-  },
-  inviteRing: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: C.outlineVariant,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 4,
-  },
-  inviteInner: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 34,
-    backgroundColor: C.surfaceContainerLowest,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  friendRing: {
-    position: 'relative',
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 2,
-  },
-  friendAvatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 34,
-    backgroundColor: C.surfaceContainerHighest,
-  },
-  friendSuitBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: C.surfaceContainer, // Matches background to cut out
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  friendName: {
-    fontFamily: F.label,
-    fontSize: 11,
-    color: C.onSurface,
-  },
-
-  // Chats Section (Active Tables)
-  chatsSection: { marginBottom: 12 },
-  chatsTitle: {
-    fontFamily: F.headline,
-    fontSize: 24,
-    color: C.onSurface,
-    fontStyle: 'italic',
-    marginBottom: 20,
-  },
-  chatList: { gap: 12 },
-  
-  chatCard: {
-    backgroundColor: C.surfaceContainerLowest,
-    borderRadius: 16,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 20,
-    elevation: 2,
-  },
-  chatAvatarRel: {
-    position: 'relative',
-    width: 56,
-    height: 56,
-  },
-  chatAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-    backgroundColor: C.surfaceContainerHighest,
-  },
-  groupAvatarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: C.surfaceContainer,
-    gap: 2,
-  },
-  groupAvatarImg: {
-    width: 27,
-    height: 27,
-  },
-  groupAvatarCount: {
-    width: 27,
-    height: 27,
-    backgroundColor: C.tertiaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  groupAvatarCountText: {
-    fontFamily: F.labelExtra,
-    fontSize: 10,
-    color: C.onTertiaryContainer,
-  },
-  chatSuitBadge: {
-    position: 'absolute',
-    top: -6,
-    left: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: C.surfaceContainerLowest, // Matches card bg to cut out
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  chatContent: { flex: 1, paddingRight: 4 },
-  chatHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 4,
-  },
-  chatName: {
-    fontFamily: F.headline,
-    fontSize: 22,
-    color: C.onSurface,
-    lineHeight: 24,
-  },
-  chatTime: {
-    fontFamily: F.labelExtra,
-    fontSize: 9,
-    color: C.secondary,
-  },
-  chatMessage: {
-    fontFamily: F.body,
-    fontSize: 13,
-    color: C.secondary,
-  },
-  unreadDotBox: {
-    paddingLeft: 8,
-    justifyContent: 'center',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: C.primary,
-  },
+  scrollContent: { padding: 20 },
+  pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1, marginBottom: 16 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 14, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(228,190,186,0.3)' },
+  searchInput: { flex: 1, fontFamily: F.body, fontSize: 15, color: C.onSurface },
+  section: { marginBottom: 24 },
+  sectionLabel: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.onSurfaceVariant, marginBottom: 12 },
+  circleScroll: { gap: 16, paddingRight: 20 },
+  circleItem: { alignItems: 'center', width: 64 },
+  circleAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.surfaceContainerLow, borderWidth: 2, borderColor: C.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 6 },
+  circleAvatarImg: { width: '100%', height: '100%' },
+  circleInitials: { fontFamily: F.labelExtra, fontSize: 18, color: C.primary },
+  circleName: { fontFamily: F.label, fontSize: 11, color: C.onSurface },
+  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
+  emptyTitle: { fontFamily: F.display, fontSize: 22, color: C.onSurface },
+  emptyBody: { fontFamily: F.body, fontSize: 14, color: C.secondary, textAlign: 'center' },
+  chatRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(228,190,186,0.2)' },
+  chatAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 14 },
+  chatAvatarImg: { width: '100%', height: '100%' },
+  chatInfo: { flex: 1 },
+  chatTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  chatName: { fontFamily: F.bodyBold, fontSize: 16, color: C.onSurface, flex: 1, marginRight: 8 },
+  chatTime: { fontFamily: F.label, fontSize: 10, color: C.secondary },
+  chatPreview: { fontFamily: F.body, fontSize: 13, color: C.secondary },
+  chatParticipants: { fontFamily: F.label, fontSize: 10, color: C.tertiary, marginTop: 4 },
 });
