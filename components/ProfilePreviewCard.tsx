@@ -15,13 +15,14 @@ type ProfilePreviewProps = {
     heightInches: number | null;
     ethnicity: string;
     religion: string;
-    bio: string;
+    bio: string | null;
     avatarUrls?: string[];
     selectedTags: any[];
+    overrideImageUri?: string;
 };
 
 export default function ProfilePreviewCard({
-    firstName, age, year, major, heightInches, ethnicity, religion, bio, avatarUrls, selectedTags
+    firstName, age, year, major, heightInches, ethnicity, religion, bio, avatarUrls, selectedTags, overrideImageUri
 }: ProfilePreviewProps) {
     const { theme } = useTheme();
     const styles = createStyles(theme);
@@ -56,7 +57,9 @@ export default function ProfilePreviewCard({
                 >
                     {/* Header Image Section */}
                     <View style={styles.imageSection}>
-                        {avatarUrls && avatarUrls.length > 0 && avatarUrls[0] ? (
+                        {overrideImageUri ? (
+                            <Image source={{ uri: overrideImageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                        ) : avatarUrls && avatarUrls.length > 0 && avatarUrls[0] ? (
                             <Image source={{ uri: avatarUrls[0] }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
                         ) : (
                             <View style={[StyleSheet.absoluteFillObject, styles.placeholderBody]}>
@@ -66,17 +69,8 @@ export default function ProfilePreviewCard({
                         <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFill} />
 
                         <View style={styles.headerInfo}>
-                            {mode === 'dating' ? (
-                                <>
-                                    <Text style={styles.headerName}>{firstName || 'Your Name'}, {age || '??'}</Text>
-                                    {heightInches && <Text style={styles.headerSub}>{formatHeight(heightInches)}</Text>}
-                                </>
-                            ) : (
-                                <>
-                                    <Text style={styles.headerName}>{firstName || 'Your Name'}</Text>
-                                    {(year || major) && <Text style={styles.headerSub}>{year}{year && major ? ' · ' : ''}{major}</Text>}
-                                </>
-                            )}
+                            <Text style={styles.headerName}>{firstName || 'Your Name'}{age ? `, ${age}` : ''}</Text>
+                            {(year || major) && <Text style={styles.headerSub}>{year}{year && major ? ' · ' : ''}{major}</Text>}
 
                             {/* Tags peaking */}
                             <View style={styles.tagsContainer}>
@@ -103,20 +97,20 @@ export default function ProfilePreviewCard({
                             </View>
                         ) : null}
 
-                        {(mode === 'dating' && (year || major)) || (mode === 'friends' && (age || heightInches || ethnicity || religion)) || secondaryTags.length > 0 ? (
+                        {(year || major || age || heightInches || ethnicity || religion || secondaryTags.length > 0) ? (
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>More Info</Text>
                                 <View style={styles.infoGrid}>
-                                    {mode === 'dating' && year && (
+                                    {year && (
                                         <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>🎓 {year}</Text></View>
                                     )}
-                                    {mode === 'dating' && major && (
+                                    {major && (
                                         <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>📚 {major}</Text></View>
                                     )}
-                                    {mode === 'friends' && age && (
+                                    {age && (
                                         <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>🎂 {age} yrs</Text></View>
                                     )}
-                                    {mode === 'friends' && heightInches && (
+                                    {heightInches && (
                                         <View style={styles.infoBadge}><Text style={styles.infoBadgeText}>📏 {formatHeight(heightInches)}</Text></View>
                                     )}
                                     {ethnicity && (

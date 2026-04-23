@@ -17,25 +17,6 @@ export default function SettingsScreen() {
     const [foundUser, setFoundUser] = useState<{ id: string; email: string; first_name: string; role: string } | null>(null);
     const [searchLoading, setSearchLoading] = useState(false);
 
-    // Toggle handlers
-    const toggleDating = async () => {
-        if (!user || !profile) return;
-        const { error } = await supabase
-            .from('profiles')
-            .update({ dating_enabled: !profile.dating_enabled, updated_at: new Date().toISOString() })
-            .eq('id', user.id);
-        if (!error) await refreshProfile();
-    };
-
-    const toggleFriends = async () => {
-        if (!user || !profile) return;
-        const { error } = await supabase
-            .from('profiles')
-            .update({ friends_enabled: !profile.friends_enabled, updated_at: new Date().toISOString() })
-            .eq('id', user.id);
-        if (!error) await refreshProfile();
-    };
-
     const handleSignOut = async () => {
         await signOut();
     };
@@ -118,37 +99,6 @@ export default function SettingsScreen() {
                 </View>
             )}
 
-            {/* Modes Section */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Modes</Text>
-
-                <View style={styles.toggleRow}>
-                    <View style={styles.toggleInfo}>
-                        <Text style={styles.toggleLabel}>👋 Friends Mode</Text>
-                        <Text style={styles.toggleDesc}>Appear in friends swiping pool</Text>
-                    </View>
-                    <Switch
-                        value={profile?.friends_enabled ?? true}
-                        onValueChange={toggleFriends}
-                        trackColor={{ false: '#ddd', true: 'rgba(59,130,246,0.4)' }}
-                        thumbColor={profile?.friends_enabled ? '#3b82f6' : '#ccc'}
-                    />
-                </View>
-
-                <View style={styles.toggleRow}>
-                    <View style={styles.toggleInfo}>
-                        <Text style={styles.toggleLabel}>💝 Dating Mode</Text>
-                        <Text style={styles.toggleDesc}>Appear in dating swiping pool</Text>
-                    </View>
-                    <Switch
-                        value={profile?.dating_enabled ?? false}
-                        onValueChange={toggleDating}
-                        trackColor={{ false: '#ddd', true: 'rgba(175,16,26,0.4)' }}
-                        thumbColor={profile?.dating_enabled ? C.primary : '#ccc'}
-                    />
-                </View>
-            </View>
-
             {/* Account Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Account</Text>
@@ -179,18 +129,20 @@ export default function SettingsScreen() {
             </View>
 
             {/* Admin Section */}
-            {isAdmin && (
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Admin</Text>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => setShowAdminModal(true)}>
-                        <View style={[styles.menuIconContainer, { backgroundColor: C.tertiaryAlpha }]}>
-                            <Crown color={C.tertiary} size={20} />
-                        </View>
-                        <Text style={styles.menuText}>Manage Event Managers</Text>
-                        <ChevronRight size={18} color={C.secondary} />
-                    </TouchableOpacity>
-                </View>
-            )}
+            {
+                isAdmin && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Admin</Text>
+                        <TouchableOpacity style={styles.menuItem} onPress={() => setShowAdminModal(true)}>
+                            <View style={[styles.menuIconContainer, { backgroundColor: C.tertiaryAlpha }]}>
+                                <Crown color={C.tertiary} size={20} />
+                            </View>
+                            <Text style={styles.menuText}>Manage Event Managers</Text>
+                            <ChevronRight size={18} color={C.secondary} />
+                        </TouchableOpacity>
+                    </View>
+                )
+            }
 
             {/* System */}
             <View style={styles.section}>
@@ -289,7 +241,7 @@ export default function SettingsScreen() {
                     )}
                 </View>
             </Modal>
-        </ScrollView>
+        </ScrollView >
     );
 }
 

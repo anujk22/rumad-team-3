@@ -1,10 +1,12 @@
 import ProfilePreviewCard from '@/components/ProfilePreviewCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { decode } from 'base64-arraybuffer';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Camera } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad', 'Transfer'];
 const ETHNICITIES = ['Asian', 'Caucasian', 'Hispanic/Latino', 'Middle Eastern', 'African American / Black', 'Mixed', 'Other', 'Prefer not to say'];
@@ -38,6 +40,12 @@ export default function EditProfileScreen() {
     const [customTagText, setCustomTagText] = useState('');
     const [saving, setSaving] = useState(false);
 
+    const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+    const [localImageBase64, setLocalImageBase64] = useState<string | null>(null);
+
+    const [friendsEnabled, setFriendsEnabled] = useState(profile?.friends_enabled ?? true);
+    const [datingEnabled, setDatingEnabled] = useState(profile?.dating_enabled ?? false);
+
     useEffect(() => {
         if (profile) {
             setFirstName(profile.first_name || '');
@@ -47,6 +55,8 @@ export default function EditProfileScreen() {
             setEthnicity(profile.ethnicity || '');
             setReligion(profile.religion || '');
             setBio(profile.bio || '');
+            setFriendsEnabled(profile.friends_enabled ?? true);
+            setDatingEnabled(profile.dating_enabled ?? false);
         }
         if (user) {
             fetchUserTags();
@@ -98,6 +108,21 @@ export default function EditProfileScreen() {
         }
     };
 
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [4, 5],
+            quality: 0.8,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setLocalImageUri(result.assets[0].uri);
+            setLocalImageBase64(result.assets[0].base64 || null);
+        }
+    };
+
     const handleSave = async () => {
         if (!firstName.trim()) {
             Alert.alert('Required', 'First name is required.');
@@ -116,11 +141,34 @@ export default function EditProfileScreen() {
                     ethnicity: ethnicity || null,
                     religion: religion || null,
                     bio: bio.trim() || null,
+                    friends_enabled: friendsEnabled,
+                    dating_enabled: datingEnabled,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', user?.id);
 
             if (error) throw error;
+
+            let updatedAvatarUrls = profile?.avatar_urls || [];
+            if (localImageBase64 && user?.id) {
+                const imagePath = `${user.id}/avatar_${Date.now()}.jpg`;
+                const arrayBuffer = decode(localImageBase64);
+                const { error: uploadError } = await supabase.storage
+                    .from('avatars')
+                    .upload(imagePath, arrayBuffer, {
+                        contentType: 'image/jpeg',
+                        upsert: true,
+                    });
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(imagePath);
+
+                // Keep keeping newer avatar at position 0
+                updatedAvatarUrls = [publicUrl, ...updatedAvatarUrls.filter(u => u !== publicUrl)];
+
+                await supabase.from('profiles').update({ avatar_urls: updatedAvatarUrls }).eq('id', user.id);
+            }
 
             // Save interests
             await supabase.from('user_tags').delete().eq('user_id', user?.id);
@@ -166,7 +214,13 @@ export default function EditProfileScreen() {
                         bio={bio}
                         avatarUrls={profile?.avatar_urls || []}
                         selectedTags={selectedTagObjects}
+                        overrideImageUri={localImageUri || undefined}
                     />
+
+                    <TouchableOpacity style={styles.changePhotoBtn} onPress={pickImage}>
+                        <Camera size={18} color="#af101a" style={{ marginRight: 8 }} />
+                        <Text style={styles.changePhotoText}>Change Photo</Text>
+                    </TouchableOpacity>
 
                     <View style={styles.divider} />
                     <Text style={styles.label}>First Name</Text>
@@ -302,6 +356,35 @@ export default function EditProfileScreen() {
                         </TouchableOpacity>
                     </View>
 
+                    <View style={styles.divider} />
+
+                    <Text style={styles.label}>Profile Visibility</Text>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleInfo}>
+                            <Text style={styles.toggleLabel}>👋 Friends Mode</Text>
+                            <Text style={styles.toggleDesc}>Appear in friends swiping pool</Text>
+                        </View>
+                        <Switch
+                            value={friendsEnabled}
+                            onValueChange={setFriendsEnabled}
+                            trackColor={{ false: '#ddd', true: 'rgba(59,130,246,0.4)' }}
+                            thumbColor={friendsEnabled ? '#3b82f6' : '#ccc'}
+                        />
+                    </View>
+
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleInfo}>
+                            <Text style={styles.toggleLabel}>💝 Dating Mode</Text>
+                            <Text style={styles.toggleDesc}>Appear in dating swiping pool</Text>
+                        </View>
+                        <Switch
+                            value={datingEnabled}
+                            onValueChange={setDatingEnabled}
+                            trackColor={{ false: '#ddd', true: 'rgba(175,16,26,0.4)' }}
+                            thumbColor={datingEnabled ? '#af101a' : '#ccc'}
+                        />
+                    </View>
+
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -345,5 +428,11 @@ const styles = StyleSheet.create({
     customTagRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
     customTagInput: { flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 12, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
     customTagAddBtn: { width: 48, height: 48, backgroundColor: 'rgba(175,16,26,0.1)', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    customTagAddBtnText: { fontSize: 24, color: '#af101a', fontWeight: '400', marginTop: -2 }
+    customTagAddBtnText: { fontSize: 24, color: '#af101a', fontWeight: '400', marginTop: -2 },
+    changePhotoBtn: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(175,16,26,0.1)', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999, marginTop: -8 },
+    changePhotoText: { color: '#af101a', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+    toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 10, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
+    toggleInfo: { flex: 1 },
+    toggleLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#1b1c1c' },
+    toggleDesc: { fontFamily: 'Manrope_400Regular', fontSize: 12, color: '#8f6f6c', marginTop: 2 }
 });
