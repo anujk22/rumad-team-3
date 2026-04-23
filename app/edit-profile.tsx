@@ -1,5 +1,7 @@
 import ProfilePreviewCard from '@/components/ProfilePreviewCard';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
+import { F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,7 +27,9 @@ const HEIGHT_OPTIONS = (() => {
 
 export default function EditProfileScreen() {
     const { user, profile, refreshProfile } = useAuth();
+    const { theme } = useTheme();
     const router = useRouter();
+    const styles = createStyles(theme);
 
     const [firstName, setFirstName] = useState(profile?.first_name || '');
     const [year, setYear] = useState(profile?.academic_year || '');
@@ -156,9 +160,15 @@ export default function EditProfileScreen() {
                             const imagePath = `${user.id}/${Date.now()}_${i}.jpg`;
                             const { error: uploadError } = await supabase.storage
                                 .from('avatars')
-                                .upload(imagePath, decode(base64Data), { contentType: 'image/jpeg' });
+                                .upload(imagePath, new Uint8Array(decode(base64Data)), {
+                                    contentType: 'image/jpeg',
+                                    upsert: true
+                                });
 
-                            if (uploadError) throw uploadError;
+                            if (uploadError) {
+                                console.error('Upload Error:', uploadError);
+                                throw uploadError;
+                            }
 
                             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(imagePath);
                             uploadedUrls.push(publicUrl);
@@ -211,11 +221,11 @@ export default function EditProfileScreen() {
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <ArrowLeft size={24} color="#1b1c1c" />
+                        <ArrowLeft size={24} color={theme.onSurface} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Edit Profile</Text>
                     <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
-                        {saving ? <ActivityIndicator size="small" color="#af101a" /> : <Text style={styles.saveText}>Save</Text>}
+                        {saving ? <ActivityIndicator size="small" color={theme.primary} /> : <Text style={styles.saveText}>Save</Text>}
                     </TouchableOpacity>
                 </View>
 
@@ -232,7 +242,7 @@ export default function EditProfileScreen() {
                         bio={bio}
                         avatarUrls={profile?.avatar_urls || []}
                         selectedTags={selectedTagObjects}
-                        overrideImages={photos.filter(p => p !== null) as string[]}
+                        overrideImages={photos.filter((p): p is string => p !== null)}
                     />
 
                     <Text style={styles.label}>Current Photos</Text>
@@ -267,7 +277,7 @@ export default function EditProfileScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="Your Name"
-                        placeholderTextColor="#8f6f6c"
+                        placeholderTextColor={theme.outline}
                         value={firstName}
                         onChangeText={setFirstName}
                     />
@@ -276,7 +286,7 @@ export default function EditProfileScreen() {
                     <TextInput
                         style={[styles.input, { height: 100, paddingTop: 16, textAlignVertical: 'top' }]}
                         placeholder="Tell people about yourself..."
-                        placeholderTextColor="#8f6f6c"
+                        placeholderTextColor={theme.outline}
                         multiline
                         maxLength={300}
                         value={bio}
@@ -407,8 +417,8 @@ export default function EditProfileScreen() {
                         <Switch
                             value={friendsEnabled}
                             onValueChange={setFriendsEnabled}
-                            trackColor={{ false: '#ddd', true: 'rgba(59,130,246,0.4)' }}
-                            thumbColor={friendsEnabled ? '#3b82f6' : '#ccc'}
+                            trackColor={{ false: theme.outlineAlpha, true: 'rgba(59,130,246,0.4)' }}
+                            thumbColor={friendsEnabled ? '#3b82f6' : theme.secondary}
                         />
                     </View>
 
@@ -420,8 +430,8 @@ export default function EditProfileScreen() {
                         <Switch
                             value={datingEnabled}
                             onValueChange={setDatingEnabled}
-                            trackColor={{ false: '#ddd', true: 'rgba(175,16,26,0.4)' }}
-                            thumbColor={datingEnabled ? '#af101a' : '#ccc'}
+                            trackColor={{ false: theme.outlineAlpha, true: theme.primaryAlpha }}
+                            thumbColor={datingEnabled ? theme.primary : theme.secondary}
                         />
                     </View>
 
@@ -431,65 +441,65 @@ export default function EditProfileScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fcf9f8' },
+const createStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
     header: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 12 : 12, paddingBottom: 16,
-        borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.3)', backgroundColor: '#fff'
+        borderBottomWidth: 1, borderBottomColor: theme.outlineAlpha, backgroundColor: theme.card
     },
     backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontFamily: 'Newsreader_800ExtraBold', fontSize: 20, color: '#1b1c1c', textAlign: 'center', flex: 1 },
+    headerTitle: { fontFamily: F.headlineBase, fontSize: 20, color: theme.onSurface, textAlign: 'center', flex: 1 },
     saveButton: { width: 60, alignItems: 'flex-end', justifyContent: 'center' },
-    saveText: { fontSize: 16, color: '#af101a', fontWeight: '700' },
+    saveText: { fontFamily: F.label, fontSize: 16, color: theme.primary },
     scrollContent: { padding: 24, paddingBottom: 60 },
-    divider: { height: 1, backgroundColor: 'rgba(228,190,186,0.4)', marginVertical: 24 },
-    label: { color: '#5b403d', fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1.5 },
-    input: { backgroundColor: '#ffffff', color: '#1b1c1c', height: 56, borderRadius: 14, paddingHorizontal: 18, fontSize: 16, marginBottom: 24, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
+    divider: { height: 1, backgroundColor: theme.outlineAlpha, marginVertical: 24 },
+    label: { fontFamily: F.label, color: theme.onSurfaceVariant, fontSize: 11, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1.5 },
+    input: { backgroundColor: theme.surfaceContainerLowest, color: theme.onSurface, fontFamily: F.body, height: 56, borderRadius: 14, paddingHorizontal: 18, fontSize: 16, marginBottom: 24, borderWidth: 1.5, borderColor: theme.outlineAlpha },
     pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-    pill: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.5)', backgroundColor: '#ffffff' },
-    pillActive: { backgroundColor: '#af101a', borderColor: '#af101a' },
-    pillText: { color: '#5f5e5e', fontSize: 14, fontWeight: '600' },
-    pillTextActive: { color: '#ffffff' },
-    pickerBtn: { backgroundColor: '#ffffff', height: 56, borderRadius: 14, paddingHorizontal: 18, justifyContent: 'center', marginBottom: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
-    pickerBtnText: { fontSize: 16, color: '#1b1c1c' },
-    dropdownContainer: { backgroundColor: '#ffffff', borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)', marginTop: -8, marginBottom: 24, overflow: 'hidden' },
+    pill: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1.5, borderColor: theme.outlineAlpha, backgroundColor: theme.surfaceContainerLowest },
+    pillActive: { backgroundColor: theme.primary, borderColor: theme.primary },
+    pillText: { fontFamily: F.label, color: theme.secondary, fontSize: 13 },
+    pillTextActive: { color: theme.onPrimary },
+    pickerBtn: { backgroundColor: theme.surfaceContainerLowest, height: 56, borderRadius: 14, paddingHorizontal: 18, justifyContent: 'center', marginBottom: 16, borderWidth: 1.5, borderColor: theme.outlineAlpha },
+    pickerBtnText: { fontFamily: F.body, fontSize: 16, color: theme.onSurface },
+    dropdownContainer: { backgroundColor: theme.surfaceContainerLowest, borderRadius: 14, borderWidth: 1.5, borderColor: theme.outlineAlpha, marginTop: -8, marginBottom: 24, overflow: 'hidden' },
     verticalHeightScroll: { maxHeight: 200 },
-    dropdownItem: { paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.2)' },
-    dropdownItemActive: { backgroundColor: 'rgba(175,16,26,0.08)' },
-    dropdownItemText: { fontSize: 16, color: '#1b1c1c' },
-    dropdownItemTextActive: { color: '#af101a', fontWeight: '700' },
+    dropdownItem: { paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: theme.outlineAlpha },
+    dropdownItemActive: { backgroundColor: theme.primaryAlpha },
+    dropdownItemText: { fontFamily: F.body, fontSize: 16, color: theme.onSurface },
+    dropdownItemTextActive: { color: theme.primary, fontFamily: F.bodyBold },
     tagCloud: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-    tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
-    tagActive: { backgroundColor: '#af101a', borderColor: '#af101a' },
+    tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, backgroundColor: theme.surfaceContainerLowest, borderWidth: 1.5, borderColor: theme.outlineAlpha },
+    tagActive: { backgroundColor: theme.primary, borderColor: theme.primary },
     tagEmoji: { fontSize: 16 },
-    tagText: { color: '#1b1c1c', fontSize: 14, fontWeight: '600' },
-    tagTextActive: { color: '#ffffff' },
+    tagText: { fontFamily: F.label, color: theme.onSurface, fontSize: 13 },
+    tagTextActive: { color: theme.onPrimary },
     customTagRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-    customTagInput: { flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 12, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
-    customTagAddBtn: { width: 48, height: 48, backgroundColor: 'rgba(175,16,26,0.1)', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    customTagAddBtnText: { fontSize: 24, color: '#af101a', fontWeight: '400', marginTop: -2 },
+    customTagInput: { flex: 1, height: 48, backgroundColor: theme.surfaceContainerLowest, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1.5, borderColor: theme.outlineAlpha, color: theme.onSurface },
+    customTagAddBtn: { width: 48, height: 48, backgroundColor: theme.primaryAlpha, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    customTagAddBtnText: { fontSize: 24, color: theme.primary, fontWeight: '400', marginTop: -2 },
     photoSection: { marginBottom: 16 },
     photoGrid: { flexDirection: 'row', gap: 12, paddingHorizontal: 4 },
     photoBox: {
         width: 72, height: 96, borderRadius: 12,
-        backgroundColor: '#fff', borderWidth: 1.5,
-        borderColor: 'rgba(228,190,186,0.4)', overflow: 'hidden',
+        backgroundColor: theme.card, borderWidth: 1.5,
+        borderColor: theme.outlineAlpha, overflow: 'hidden',
         justifyContent: 'center', alignItems: 'center',
     },
-    primaryPhoto: { borderWidth: 2, borderColor: '#af101a' },
+    primaryPhoto: { borderWidth: 2, borderColor: theme.primary },
     image: { width: '100%', height: '100%' },
     addPhotoInner: { alignItems: 'center', gap: 4 },
-    addPhotoPlus: { fontSize: 32, color: 'rgba(228,190,186,0.8)' },
-    addPhotoLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 2, color: '#af101a' },
+    addPhotoPlus: { fontSize: 32, color: theme.outline },
+    addPhotoLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 2, color: theme.primary },
     removeBtn: {
         position: 'absolute', top: 4, right: 4,
         width: 24, height: 24, borderRadius: 12,
         backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
     },
     removeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: -2 },
-    toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 10, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
+    toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.surfaceContainerLowest, padding: 16, borderRadius: 12, marginBottom: 10, borderWidth: 1.5, borderColor: theme.outlineAlpha },
     toggleInfo: { flex: 1 },
-    toggleLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#1b1c1c' },
-    toggleDesc: { fontFamily: 'Manrope_400Regular', fontSize: 12, color: '#8f6f6c', marginTop: 2 }
+    toggleLabel: { fontFamily: F.bodyBold, fontSize: 15, color: theme.onSurface },
+    toggleDesc: { fontFamily: F.body, fontSize: 12, color: theme.outline, marginTop: 2 }
 });
