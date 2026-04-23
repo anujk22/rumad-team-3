@@ -17,9 +17,9 @@ const QueueContext = createContext<QueueContextType>({
   status: 'idle',
   queueCount: 0,
   chatId: null,
-  joinQueue: async () => {},
-  leaveQueue: async () => {},
-  clearReady: () => {},
+  joinQueue: async () => { },
+  leaveQueue: async () => { },
+  clearReady: () => { },
 });
 
 export function useQueue() {
@@ -38,10 +38,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch current queue count
   const fetchQueueCount = useCallback(async () => {
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('live_queue')
       .select('*', { count: 'exact', head: true });
-    setQueueCount(count || 0);
+
+    if (error) {
+      console.error('Error fetching queue count:', error.message);
+    } else {
+      setQueueCount(count || 0);
+    }
   }, []);
 
   // Check if we're already in queue
@@ -49,13 +54,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     const checkQueue = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('live_queue')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (data) {
+      if (error) {
+        console.error('Error checking queue status:', error.message);
+      } else if (data) {
         setStatus('queued');
       }
       await fetchQueueCount();
