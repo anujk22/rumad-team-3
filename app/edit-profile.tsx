@@ -1,9 +1,8 @@
 import ProfilePreviewCard from '@/components/ProfilePreviewCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { F } from '@/lib/helpers';
+import { decodeBase64, F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
-import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
@@ -160,7 +159,7 @@ export default function EditProfileScreen() {
                             const imagePath = `${user.id}/${Date.now()}_${i}.jpg`;
                             const { error: uploadError } = await supabase.storage
                                 .from('avatars')
-                                .upload(imagePath, new Uint8Array(decode(base64Data)), {
+                                .upload(imagePath, decodeBase64(base64Data), {
                                     contentType: 'image/jpeg',
                                     upsert: true
                                 });

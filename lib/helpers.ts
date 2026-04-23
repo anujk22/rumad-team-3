@@ -64,6 +64,17 @@ export function isWithinMeetupWindow(date: Date): boolean {
   return date >= now && date <= maxDate;
 }
 
+/** Refined base64 decoder for Web/Mobile to avoid ESM bundle errors */
+export function decodeBase64(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 /** Shared color palette */
 export const C = {
   surface: '#fcf9f8',
