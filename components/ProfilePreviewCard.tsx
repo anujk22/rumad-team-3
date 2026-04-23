@@ -1,6 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
 import { C, F, formatHeight } from '@/lib/helpers';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Heart, User, Users } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -18,15 +17,19 @@ type ProfilePreviewProps = {
     bio: string | null;
     avatarUrls?: string[];
     selectedTags: any[];
-    overrideImageUri?: string;
+    overrideImages?: string[];
 };
 
 export default function ProfilePreviewCard({
-    firstName, age, year, major, heightInches, ethnicity, religion, bio, avatarUrls, selectedTags, overrideImageUri
+    firstName, age, year, major, heightInches, ethnicity, religion, bio, avatarUrls, selectedTags, overrideImages
 }: ProfilePreviewProps) {
     const { theme } = useTheme();
     const styles = createStyles(theme);
     const [mode, setMode] = useState<'dating' | 'friends'>('friends');
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    const imagesToUse = overrideImages && overrideImages.length > 0 ? overrideImages : (avatarUrls && avatarUrls.length > 0 ? avatarUrls : []);
+    const currentImage = imagesToUse[activeImageIndex] || null;
 
     const primaryTags = selectedTags.slice(0, 3);
     const secondaryTags = selectedTags.slice(3);
@@ -57,23 +60,54 @@ export default function ProfilePreviewCard({
                 >
                     {/* Header Image Section */}
                     <View style={styles.imageSection}>
-                        {overrideImageUri ? (
-                            <Image source={{ uri: overrideImageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-                        ) : avatarUrls && avatarUrls.length > 0 && avatarUrls[0] ? (
-                            <Image source={{ uri: avatarUrls[0] }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                        {currentImage ? (
+                            <Image source={{ uri: currentImage }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
                         ) : (
                             <View style={[StyleSheet.absoluteFillObject, styles.placeholderBody]}>
                                 <User size={56} color={theme.outline} />
                             </View>
                         )}
-                        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFill} />
+
+                        {/* Progress Dots */}
+                        {imagesToUse.length > 1 && (
+                            <View style={styles.progressDotsContainer}>
+                                {imagesToUse.map((_, idx) => (
+                                    <View key={idx} style={[styles.progressDot, idx === activeImageIndex && styles.progressDotActive]} />
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Tap Zones */}
+                        {imagesToUse.length > 1 && (
+                            <View style={[StyleSheet.absoluteFillObject, { zIndex: 5 }]}>
+                                <TouchableOpacity
+                                    style={styles.tapZoneLeft}
+                                    onPress={() => setActiveImageIndex(prev => Math.max(0, prev - 1))}
+                                    activeOpacity={1}
+                                />
+                                <TouchableOpacity
+                                    style={styles.tapZoneRight}
+                                    onPress={() => setActiveImageIndex(prev => Math.min(imagesToUse.length - 1, prev + 1))}
+                                    activeOpacity={1}
+                                />
+                            </View>
+                        )}
 
                         <View style={styles.headerInfo}>
                             <Text style={styles.headerName}>{firstName || 'Your Name'}{age ? `, ${age}` : ''}</Text>
-                            {(year || major) && <Text style={styles.headerSub}>{year}{year && major ? ' · ' : ''}{major}</Text>}
 
-                            {/* Tags peaking */}
+                            {/* Tags */}
                             <View style={styles.tagsContainer}>
+                                {year ? (
+                                    <View style={styles.tagPill}>
+                                        <Text style={styles.tagPillText}>🎓 {year}</Text>
+                                    </View>
+                                ) : null}
+                                {major ? (
+                                    <View style={styles.tagPill}>
+                                        <Text style={styles.tagPillText}>📚 {major}</Text>
+                                    </View>
+                                ) : null}
                                 {primaryTags.map((tag, i) => (
                                     <View key={i} style={styles.tagPill}>
                                         <Text style={styles.tagPillText}>{tag.emoji} {tag.name}</Text>
@@ -182,24 +216,39 @@ const createStyles = (theme: typeof C) => StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: theme.surfaceContainerHigh,
     },
+    progressDotsContainer: {
+        position: 'absolute', top: 12, left: 16, right: 16,
+        flexDirection: 'row', gap: 4, zIndex: 10,
+    },
+    progressDot: {
+        flex: 1, height: 4, borderRadius: 2,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+    },
+    progressDotActive: {
+        backgroundColor: '#ffffff',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2,
+    },
+    tapZoneLeft: {
+        position: 'absolute', left: 0, top: 0, bottom: 0, width: '40%', zIndex: 5,
+    },
+    tapZoneRight: {
+        position: 'absolute', right: 0, top: 0, bottom: 0, width: '40%', zIndex: 5,
+    },
     headerInfo: {
         position: 'absolute',
         bottom: 24,
         left: 20,
         right: 20,
+        zIndex: 10,
     },
     headerName: {
         fontFamily: F.display,
         fontSize: 32,
         color: '#ffffff',
         lineHeight: 36,
-    },
-    headerSub: {
-        fontFamily: F.body,
-        fontSize: 15,
-        color: 'rgba(255,255,255,0.85)',
-        marginBottom: 12,
-        fontWeight: '600',
+        textShadowColor: 'rgba(0,0,0,0.7)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
     },
     tagsContainer: {
         flexDirection: 'row',
@@ -208,18 +257,25 @@ const createStyles = (theme: typeof C) => StyleSheet.create({
         marginTop: 8,
     },
     tagPill: {
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(0,0,0,0.3)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.4)',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 999,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
     tagPillText: {
         fontFamily: F.label,
         fontSize: 10,
         letterSpacing: 0.5,
         color: '#ffffff',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
     contentSection: {
         padding: 20,

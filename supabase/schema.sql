@@ -237,20 +237,44 @@ ALTER TABLE public.swipes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own swipes" ON public.swipes FOR SELECT USING (auth.uid() = swiper_id OR auth.uid() = swiped_id);
 CREATE POLICY "Users can insert their own swipes" ON public.swipes FOR INSERT WITH CHECK (auth.uid() = swiper_id);
 
+-- ============================================================
+-- 3. CHAT PARTICIPANT SECURITY DEFINER
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.is_chat_participant(check_chat_id UUID, check_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.chat_participants
+    WHERE chat_id = check_chat_id AND user_id = check_user_id
+  );
+$$;
+
 -- Chats
 ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view chats they participate in" ON public.chats FOR SELECT USING ( EXISTS (SELECT 1 FROM public.chat_participants WHERE chat_id = id AND user_id = auth.uid()) );
+CREATE POLICY "Users can view chats they participate in or study crews" ON public.chats FOR SELECT USING (
+  type = 'study_crew' OR public.is_chat_participant(id, auth.uid())
+);
 CREATE POLICY "Authenticated users can create chats" ON public.chats FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Chat Participants
 ALTER TABLE public.chat_participants ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view participants in their chats" ON public.chat_participants FOR SELECT USING ( EXISTS (SELECT 1 FROM public.chat_participants cp WHERE cp.chat_id = chat_participants.chat_id AND cp.user_id = auth.uid()) );
+CREATE POLICY "Users can view participants in their chats or study crews" ON public.chat_participants FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND type = 'study_crew') OR
+  public.is_chat_participant(chat_id, auth.uid())
+);
 CREATE POLICY "Authenticated users can join chats" ON public.chat_participants FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Messages
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view messages in their chats" ON public.messages FOR SELECT USING ( EXISTS (SELECT 1 FROM public.chat_participants WHERE chat_id = messages.chat_id AND user_id = auth.uid()) );
-CREATE POLICY "Users can insert messages in their chats" ON public.messages FOR INSERT WITH CHECK ( auth.uid() = sender_id AND EXISTS (SELECT 1 FROM public.chat_participants WHERE chat_id = messages.chat_id AND user_id = auth.uid()) );
+CREATE POLICY "Users can view messages in their chats" ON public.messages FOR SELECT USING (
+  public.is_chat_participant(chat_id, auth.uid())
+);
+CREATE POLICY "Users can insert messages in their chats" ON public.messages FOR INSERT WITH CHECK (
+  auth.uid() = sender_id AND public.is_chat_participant(chat_id, auth.uid())
+);
 
 -- Live Queue
 ALTER TABLE public.live_queue ENABLE ROW LEVEL SECURITY;

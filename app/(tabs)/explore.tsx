@@ -3,7 +3,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Heart, User, Users, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -13,13 +12,14 @@ const { width: SW } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SW * 0.28;
 
 type Profile = {
-  id: string; first_name: string; age: number; major: string;
+  id: string; first_name: string; age: number; major: string; academic_year: string;
   avatar_urls: string[]; tags: string[];
 };
 
 function SwipeCard({ profile, isTop, zIndex, onSwipe, theme: C }: {
   profile: Profile; isTop: boolean; zIndex: number; onSwipe: (dir: 'left' | 'right') => void; theme: any;
 }) {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const pos = useRef(new Animated.ValueXY()).current;
   const rotate = pos.x.interpolate({ inputRange: [-SW / 2, 0, SW / 2], outputRange: ['-10deg', '0deg', '10deg'], extrapolate: 'clamp' });
 
@@ -46,23 +46,55 @@ function SwipeCard({ profile, isTop, zIndex, onSwipe, theme: C }: {
       overflow: 'hidden', zIndex,
     }, isTop && { transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }] }]} {...(isTop ? pan.panHandlers : {})}>
       <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden', position: 'relative', backgroundColor: C.surfaceContainerHighest }}>
-        {profile.avatar_urls[0] ? (
-          <Image source={{ uri: profile.avatar_urls[0] }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+        {profile.avatar_urls[activeImageIndex] ? (
+          <Image source={{ uri: profile.avatar_urls[activeImageIndex] }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
         ) : (
           <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
             <User size={64} color={C.outline} />
           </View>
         )}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%' }}>
-          <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFill} />
-        </View>
-        <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
-          <Text style={{ fontFamily: F.display, fontSize: 34, color: '#ffffff', lineHeight: 38 }}>{profile.first_name}, {profile.age}</Text>
-          {profile.major ? <Text style={{ fontFamily: F.body, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginBottom: 16 }}>{profile.major}</Text> : null}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+
+        {/* Progress Dots */}
+        {profile.avatar_urls.length > 1 && (
+          <View style={{ position: 'absolute', top: 12, left: 16, right: 16, flexDirection: 'row', gap: 4, zIndex: 10 }}>
+            {profile.avatar_urls.map((_, idx) => (
+              <View key={idx} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: idx === activeImageIndex ? '#ffffff' : 'rgba(255,255,255,0.3)', shadowColor: idx === activeImageIndex ? '#000' : 'transparent', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2 }} />
+            ))}
+          </View>
+        )}
+
+        {/* Tap Zones */}
+        {profile.avatar_urls.length > 1 && (
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 5 }]}>
+            <TouchableOpacity
+              style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '40%', zIndex: 5 }}
+              onPress={() => setActiveImageIndex(prev => Math.max(0, prev - 1))}
+              activeOpacity={1}
+            />
+            <TouchableOpacity
+              style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '40%', zIndex: 5 }}
+              onPress={() => setActiveImageIndex(prev => Math.min(profile.avatar_urls.length - 1, prev + 1))}
+              activeOpacity={1}
+            />
+          </View>
+        )}
+
+        <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, zIndex: 10 }}>
+          <Text style={{ fontFamily: F.display, fontSize: 34, color: '#ffffff', lineHeight: 38, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{profile.first_name}, {profile.age}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {profile.academic_year ? (
+              <View style={{ backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 }}>
+                <Text style={{ fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#ffffff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>🎓 {profile.academic_year}</Text>
+              </View>
+            ) : null}
+            {profile.major ? (
+              <View style={{ backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 }}>
+                <Text style={{ fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#ffffff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>📚 {profile.major}</Text>
+              </View>
+            ) : null}
             {profile.tags.slice(0, 3).map((tag, i) => (
-              <View key={i} style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
-                <Text style={{ fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#ffffff' }}>{tag}</Text>
+              <View key={i} style={{ backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 }}>
+                <Text style={{ fontFamily: F.label, fontSize: 10, letterSpacing: 0.5, color: '#ffffff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -117,7 +149,7 @@ export default function SwipeScreen() {
 
       let query = supabase
         .from('profiles')
-        .select('id, first_name, age, major, avatar_urls')
+        .select('id, first_name, age, major, academic_year, avatar_urls')
         .eq('onboarding_completed', true)
         .not('id', 'in', `(${swipedIds.join(',')})`)
         .limit(20);

@@ -4,9 +4,9 @@ import { supabase } from '@/lib/supabase';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Camera } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad', 'Transfer'];
 const ETHNICITIES = ['Asian', 'Caucasian', 'Hispanic/Latino', 'Middle Eastern', 'African American / Black', 'Mixed', 'Other', 'Prefer not to say'];
@@ -40,8 +40,7 @@ export default function EditProfileScreen() {
     const [customTagText, setCustomTagText] = useState('');
     const [saving, setSaving] = useState(false);
 
-    const [localImageUri, setLocalImageUri] = useState<string | null>(null);
-    const [localImageBase64, setLocalImageBase64] = useState<string | null>(null);
+    const [photos, setPhotos] = useState<(string | null)[]>(Array(6).fill(null));
 
     const [friendsEnabled, setFriendsEnabled] = useState(profile?.friends_enabled ?? true);
     const [datingEnabled, setDatingEnabled] = useState(profile?.dating_enabled ?? false);
@@ -57,6 +56,14 @@ export default function EditProfileScreen() {
             setBio(profile.bio || '');
             setFriendsEnabled(profile.friends_enabled ?? true);
             setDatingEnabled(profile.dating_enabled ?? false);
+
+            const initialPhotos = Array(6).fill(null);
+            if (profile.avatar_urls) {
+                profile.avatar_urls.forEach((url, i) => {
+                    if (i < 6) initialPhotos[i] = url;
+                });
+            }
+            setPhotos(initialPhotos);
         }
         if (user) {
             fetchUserTags();
@@ -108,19 +115,26 @@ export default function EditProfileScreen() {
         }
     };
 
-    const pickImage = async () => {
+    const pickImage = async (index: number) => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
-            aspect: [4, 5],
+            aspect: [3, 4],
             quality: 0.8,
             base64: true,
         });
 
-        if (!result.canceled && result.assets[0]) {
-            setLocalImageUri(result.assets[0].uri);
-            setLocalImageBase64(result.assets[0].base64 || null);
+        if (!result.canceled && result.assets[0].base64) {
+            const newPhotos = [...photos];
+            newPhotos[index] = `data:image/jpeg;base64,${result.assets[0].base64}`;
+            setPhotos(newPhotos);
         }
+    };
+
+    const removePhoto = (index: number) => {
+        const newPhotos = [...photos];
+        newPhotos[index] = null;
+        setPhotos(newPhotos);
     };
 
     const handleSave = async () => {
@@ -149,25 +163,28 @@ export default function EditProfileScreen() {
 
             if (error) throw error;
 
-            let updatedAvatarUrls = profile?.avatar_urls || [];
-            if (localImageBase64 && user?.id) {
-                const imagePath = `${user.id}/avatar_${Date.now()}.jpg`;
-                const arrayBuffer = decode(localImageBase64);
-                const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(imagePath, arrayBuffer, {
-                        contentType: 'image/jpeg',
-                        upsert: true,
-                    });
+            const uploadedUrls: string[] = [];
+            if (user?.id) {
+                for (let i = 0; i < photos.length; i++) {
+                    const p = photos[i];
+                    if (p) {
+                        if (p.startsWith('data:image')) {
+                            const base64Data = p.replace(/^data:image\/\w+;base64,/, '');
+                            const imagePath = `${user.id}/${Date.now()}_${i}.jpg`;
+                            const { error: uploadError } = await supabase.storage
+                                .from('avatars')
+                                .upload(imagePath, decode(base64Data), { contentType: 'image/jpeg' });
 
-                if (uploadError) throw uploadError;
+                            if (uploadError) throw uploadError;
 
-                const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(imagePath);
-
-                // Keep keeping newer avatar at position 0
-                updatedAvatarUrls = [publicUrl, ...updatedAvatarUrls.filter(u => u !== publicUrl)];
-
-                await supabase.from('profiles').update({ avatar_urls: updatedAvatarUrls }).eq('id', user.id);
+                            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(imagePath);
+                            uploadedUrls.push(publicUrl);
+                        } else {
+                            uploadedUrls.push(p);
+                        }
+                    }
+                }
+                await supabase.from('profiles').update({ avatar_urls: uploadedUrls }).eq('id', user.id);
             }
 
             // Save interests
@@ -214,13 +231,33 @@ export default function EditProfileScreen() {
                         bio={bio}
                         avatarUrls={profile?.avatar_urls || []}
                         selectedTags={selectedTagObjects}
-                        overrideImageUri={localImageUri || undefined}
+                        overrideImages={photos.filter(p => p !== null) as string[]}
                     />
 
-                    <TouchableOpacity style={styles.changePhotoBtn} onPress={pickImage}>
-                        <Camera size={18} color="#af101a" style={{ marginRight: 8 }} />
-                        <Text style={styles.changePhotoText}>Change Photo</Text>
-                    </TouchableOpacity>
+                    <View style={styles.photoGrid}>
+                        {photos.map((photo, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={[styles.photoBox, index === 0 && styles.primaryPhoto]}
+                                onPress={() => photo ? removePhoto(index) : pickImage(index)}
+                                activeOpacity={0.8}
+                            >
+                                {photo ? (
+                                    <>
+                                        <Image source={{ uri: photo }} style={styles.image} />
+                                        <View style={styles.removeBtn}>
+                                            <Text style={styles.removeBtnText}>×</Text>
+                                        </View>
+                                    </>
+                                ) : (
+                                    <View style={styles.addPhotoInner}>
+                                        <Text style={styles.addPhotoPlus}>+</Text>
+                                        {index === 0 && <Text style={styles.addPhotoLabel}>PRIMARY</Text>}
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
 
                     <View style={styles.divider} />
                     <Text style={styles.label}>First Name</Text>
@@ -429,8 +466,24 @@ const styles = StyleSheet.create({
     customTagInput: { flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 12, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
     customTagAddBtn: { width: 48, height: 48, backgroundColor: 'rgba(175,16,26,0.1)', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     customTagAddBtnText: { fontSize: 24, color: '#af101a', fontWeight: '400', marginTop: -2 },
-    changePhotoBtn: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(175,16,26,0.1)', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999, marginTop: -8 },
-    changePhotoText: { color: '#af101a', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+    photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
+    photoBox: {
+        width: '30%', aspectRatio: 3 / 4, borderRadius: 16,
+        backgroundColor: '#fff', borderWidth: 1.5,
+        borderColor: 'rgba(228,190,186,0.4)', overflow: 'hidden',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    primaryPhoto: { width: '62%' },
+    image: { width: '100%', height: '100%' },
+    addPhotoInner: { alignItems: 'center', gap: 4 },
+    addPhotoPlus: { fontSize: 32, color: 'rgba(228,190,186,0.8)' },
+    addPhotoLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 2, color: '#af101a' },
+    removeBtn: {
+        position: 'absolute', top: 8, right: 8,
+        width: 28, height: 28, borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
+    },
+    removeBtnText: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: -2 },
     toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 10, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
     toggleInfo: { flex: 1 },
     toggleLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#1b1c1c' },
