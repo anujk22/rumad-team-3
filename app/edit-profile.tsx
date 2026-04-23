@@ -145,26 +145,9 @@ export default function EditProfileScreen() {
 
         setSaving(true);
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    first_name: firstName.trim(),
-                    academic_year: year || null,
-                    major: major.trim() || null,
-                    height_inches: heightInches,
-                    ethnicity: ethnicity || null,
-                    religion: religion || null,
-                    bio: bio.trim() || null,
-                    friends_enabled: friendsEnabled,
-                    dating_enabled: datingEnabled,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', user?.id);
-
-            if (error) throw error;
-
-            const uploadedUrls: string[] = [];
+            let uploadedUrls: string[] | undefined = undefined;
             if (user?.id) {
+                uploadedUrls = [];
                 for (let i = 0; i < photos.length; i++) {
                     const p = photos[i];
                     if (p) {
@@ -184,8 +167,26 @@ export default function EditProfileScreen() {
                         }
                     }
                 }
-                await supabase.from('profiles').update({ avatar_urls: uploadedUrls }).eq('id', user.id);
             }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    first_name: firstName.trim(),
+                    academic_year: year || null,
+                    major: major.trim() || null,
+                    height_inches: heightInches,
+                    ethnicity: ethnicity || null,
+                    religion: religion || null,
+                    bio: bio.trim() || null,
+                    friends_enabled: friendsEnabled,
+                    dating_enabled: datingEnabled,
+                    ...(uploadedUrls ? { avatar_urls: uploadedUrls } : {}),
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', user?.id);
+
+            if (error) throw error;
 
             // Save interests
             await supabase.from('user_tags').delete().eq('user_id', user?.id);
@@ -234,29 +235,30 @@ export default function EditProfileScreen() {
                         overrideImages={photos.filter(p => p !== null) as string[]}
                     />
 
-                    <View style={styles.photoGrid}>
-                        {photos.map((photo, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[styles.photoBox, index === 0 && styles.primaryPhoto]}
-                                onPress={() => photo ? removePhoto(index) : pickImage(index)}
-                                activeOpacity={0.8}
-                            >
-                                {photo ? (
-                                    <>
-                                        <Image source={{ uri: photo }} style={styles.image} />
-                                        <View style={styles.removeBtn}>
-                                            <Text style={styles.removeBtnText}>×</Text>
+                    <View style={styles.photoSection}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoGrid}>
+                            {photos.map((photo, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[styles.photoBox, index === 0 && styles.primaryPhoto]}
+                                    onPress={() => photo ? removePhoto(index) : pickImage(index)}
+                                    activeOpacity={0.8}
+                                >
+                                    {photo ? (
+                                        <>
+                                            <Image source={{ uri: photo }} style={styles.image} />
+                                            <View style={styles.removeBtn}>
+                                                <Text style={styles.removeBtnText}>×</Text>
+                                            </View>
+                                        </>
+                                    ) : (
+                                        <View style={styles.addPhotoInner}>
+                                            <Text style={styles.addPhotoPlus}>+</Text>
                                         </View>
-                                    </>
-                                ) : (
-                                    <View style={styles.addPhotoInner}>
-                                        <Text style={styles.addPhotoPlus}>+</Text>
-                                        {index === 0 && <Text style={styles.addPhotoLabel}>PRIMARY</Text>}
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
                     </View>
 
                     <View style={styles.divider} />
@@ -466,24 +468,25 @@ const styles = StyleSheet.create({
     customTagInput: { flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 12, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
     customTagAddBtn: { width: 48, height: 48, backgroundColor: 'rgba(175,16,26,0.1)', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     customTagAddBtnText: { fontSize: 24, color: '#af101a', fontWeight: '400', marginTop: -2 },
-    photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
+    photoSection: { marginBottom: 16 },
+    photoGrid: { flexDirection: 'row', gap: 12, paddingHorizontal: 4 },
     photoBox: {
-        width: '30%', aspectRatio: 3 / 4, borderRadius: 16,
+        width: 72, height: 96, borderRadius: 12,
         backgroundColor: '#fff', borderWidth: 1.5,
         borderColor: 'rgba(228,190,186,0.4)', overflow: 'hidden',
         justifyContent: 'center', alignItems: 'center',
     },
-    primaryPhoto: { width: '62%' },
+    primaryPhoto: { borderWidth: 2, borderColor: '#af101a' },
     image: { width: '100%', height: '100%' },
     addPhotoInner: { alignItems: 'center', gap: 4 },
     addPhotoPlus: { fontSize: 32, color: 'rgba(228,190,186,0.8)' },
     addPhotoLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 2, color: '#af101a' },
     removeBtn: {
-        position: 'absolute', top: 8, right: 8,
-        width: 28, height: 28, borderRadius: 14,
+        position: 'absolute', top: 4, right: 4,
+        width: 24, height: 24, borderRadius: 12,
         backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
     },
-    removeBtnText: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: -2 },
+    removeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: -2 },
     toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 10, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
     toggleInfo: { flex: 1 },
     toggleLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#1b1c1c' },
