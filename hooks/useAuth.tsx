@@ -12,6 +12,7 @@ export type Profile = {
   pronouns: string | null;
   height_inches: number | null;
   ethnicity: string | null;
+  religion: string | null;
   bio: string | null;
   zodiac_sign: string | null;
   avatar_urls: string[];

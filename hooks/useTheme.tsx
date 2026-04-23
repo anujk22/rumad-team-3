@@ -25,6 +25,8 @@ type ThemePalette = {
     surfaceContainerHigh: string;
     surfaceContainerLowest: string;
     surfaceContainerHighest: string;
+    primaryFaint: string;
+    error: string;
 };
 
 export const LightTheme: ThemePalette = {
@@ -50,6 +52,8 @@ export const LightTheme: ThemePalette = {
     surfaceContainerHigh: '#eae7e7',
     surfaceContainerLowest: '#ffffff',
     surfaceContainerHighest: '#e5e2e1',
+    primaryFaint: 'rgba(175, 16, 26, 0.08)',
+    error: '#ba1a1a',
 };
 
 export const DarkTheme: ThemePalette = {
@@ -75,6 +79,8 @@ export const DarkTheme: ThemePalette = {
     surfaceContainerHigh: '#222222',
     surfaceContainerLowest: '#111111',
     surfaceContainerHighest: '#2a2a2a',
+    primaryFaint: 'rgba(212, 200, 168, 0.15)',
+    error: '#cf6679',
 };
 
 type ThemeContextType = {

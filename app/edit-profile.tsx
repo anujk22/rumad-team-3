@@ -1,9 +1,10 @@
+import ProfilePreviewCard from '@/components/ProfilePreviewCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, SafeAreaView } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad', 'Transfer'];
 const ETHNICITIES = ['Asian', 'Caucasian', 'Hispanic/Latino', 'Middle Eastern', 'African American / Black', 'Mixed', 'Other', 'Prefer not to say'];
@@ -78,12 +79,12 @@ export default function EditProfileScreen() {
         try {
             const formattedName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
             let { data: existing } = await supabase.from('tags').select('*').ilike('name', name).maybeSingle();
-            
+
             if (!existing) {
                 const { data: newTag, error } = await supabase.from('tags').insert({ name: formattedName, emoji: '✨' }).select().single();
                 if (!error && newTag) existing = newTag;
             }
-            
+
             if (existing) {
                 if (!availableTags.find(t => t.id === existing!.id)) {
                     setAvailableTags(prev => [...prev, existing!]);
@@ -137,164 +138,180 @@ export default function EditProfileScreen() {
         }
     };
 
+    const selectedTagObjects = availableTags.filter(t => selectedTags.includes(t.id));
+
     return (
         <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#1b1c1c" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Edit Profile</Text>
-                <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
-                    {saving ? <ActivityIndicator size="small" color="#af101a" /> : <Text style={styles.saveText}>Save</Text>}
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                
-                <Text style={styles.label}>First Name</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Your Name"
-                    placeholderTextColor="#8f6f6c"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                />
-
-                <Text style={styles.label}>Bio</Text>
-                <TextInput
-                    style={[styles.input, { height: 100, paddingTop: 16, textAlignVertical: 'top' }]}
-                    placeholder="Tell people about yourself..."
-                    placeholderTextColor="#8f6f6c"
-                    multiline
-                    maxLength={300}
-                    value={bio}
-                    onChangeText={setBio}
-                />
-
-                <View style={styles.divider} />
-
-                <Text style={styles.label}>Academic Year</Text>
-                <View style={styles.pillContainer}>
-                    {YEARS.map(y => (
-                        <TouchableOpacity
-                            key={y}
-                            style={[styles.pill, year === y && styles.pillActive]}
-                            onPress={() => setYear(year === y ? '' : y)}
-                        >
-                            <Text style={[styles.pillText, year === y && styles.pillTextActive]}>{y}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                <Text style={styles.label}>Major</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Computer Science"
-                    placeholderTextColor="#8f6f6c"
-                    value={major}
-                    onChangeText={setMajor}
-                />
-
-                <View style={styles.divider} />
-
-                <Text style={styles.label}>Height</Text>
-                <TouchableOpacity
-                    style={styles.pickerBtn}
-                    onPress={() => setShowHeightPicker(!showHeightPicker)}
-                >
-                    <Text style={[styles.pickerBtnText, !heightInches && { color: '#8f6f6c' }]}>
-                        {heightInches ? `${Math.floor(heightInches / 12)}'${heightInches % 12}"` : 'Select height'}
-                    </Text>
-                </TouchableOpacity>
-                
-                {showHeightPicker && (
-                    <View style={styles.dropdownContainer}>
-                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true} style={styles.verticalHeightScroll}>
-                            {HEIGHT_OPTIONS.map(h => (
-                                <TouchableOpacity
-                                    key={h.value}
-                                    style={[styles.dropdownItem, heightInches === h.value && styles.dropdownItemActive]}
-                                    onPress={() => { setHeightInches(h.value); setShowHeightPicker(false); }}
-                                >
-                                    <Text style={[styles.dropdownItemText, heightInches === h.value && styles.dropdownItemTextActive]}>{h.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-                )}
-
-                <Text style={styles.label}>Ethnicity</Text>
-                <View style={styles.pillContainer}>
-                    {ETHNICITIES.map(e => (
-                        <TouchableOpacity
-                            key={e}
-                            style={[styles.pill, ethnicity === e && styles.pillActive]}
-                            onPress={() => setEthnicity(ethnicity === e ? '' : e)}
-                        >
-                            <Text style={[styles.pillText, ethnicity === e && styles.pillTextActive]}>{e}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                <Text style={styles.label}>Religion</Text>
-                <View style={styles.pillContainer}>
-                    {RELIGIONS.map(r => (
-                        <TouchableOpacity
-                            key={r}
-                            style={[styles.pill, religion === r && styles.pillActive]}
-                            onPress={() => setReligion(religion === r ? '' : r)}
-                        >
-                            <Text style={[styles.pillText, religion === r && styles.pillTextActive]}>{r}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                <View style={styles.divider} />
-
-                <Text style={styles.label}>Interests</Text>
-                <View style={styles.tagCloud}>
-                    {availableTags.map(tag => {
-                        const isActive = selectedTags.includes(tag.id);
-                        return (
-                            <TouchableOpacity
-                                key={tag.id}
-                                style={[styles.tag, isActive && styles.tagActive]}
-                                onPress={() => toggleTag(tag.id)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.tagEmoji}>{tag.emoji}</Text>
-                                <Text style={[styles.tagText, isActive && styles.tagTextActive]}>{tag.name}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-
-                <View style={styles.customTagRow}>
-                    <TextInput
-                        style={styles.customTagInput}
-                        placeholder="Add a custom interest..."
-                        placeholderTextColor="#8f6f6c"
-                        value={customTagText}
-                        onChangeText={setCustomTagText}
-                        onSubmitEditing={addCustomTag}
-                        blurOnSubmit={false}
-                    />
-                    <TouchableOpacity style={styles.customTagAddBtn} onPress={addCustomTag}>
-                        <Text style={styles.customTagAddBtnText}>+</Text>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <ArrowLeft size={24} color="#1b1c1c" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Edit Profile</Text>
+                    <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
+                        {saving ? <ActivityIndicator size="small" color="#af101a" /> : <Text style={styles.saveText}>Save</Text>}
                     </TouchableOpacity>
                 </View>
 
-            </ScrollView>
-        </KeyboardAvoidingView>
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+                    <ProfilePreviewCard
+                        firstName={firstName}
+                        age={profile?.age}
+                        year={year}
+                        major={major}
+                        heightInches={heightInches}
+                        ethnicity={ethnicity}
+                        religion={religion}
+                        bio={bio}
+                        avatarUrls={profile?.avatar_urls || []}
+                        selectedTags={selectedTagObjects}
+                    />
+
+                    <View style={styles.divider} />
+                    <Text style={styles.label}>First Name</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Your Name"
+                        placeholderTextColor="#8f6f6c"
+                        value={firstName}
+                        onChangeText={setFirstName}
+                    />
+
+                    <Text style={styles.label}>Bio</Text>
+                    <TextInput
+                        style={[styles.input, { height: 100, paddingTop: 16, textAlignVertical: 'top' }]}
+                        placeholder="Tell people about yourself..."
+                        placeholderTextColor="#8f6f6c"
+                        multiline
+                        maxLength={300}
+                        value={bio}
+                        onChangeText={setBio}
+                    />
+
+                    <View style={styles.divider} />
+
+                    <Text style={styles.label}>Academic Year</Text>
+                    <View style={styles.pillContainer}>
+                        {YEARS.map(y => (
+                            <TouchableOpacity
+                                key={y}
+                                style={[styles.pill, year === y && styles.pillActive]}
+                                onPress={() => setYear(year === y ? '' : y)}
+                            >
+                                <Text style={[styles.pillText, year === y && styles.pillTextActive]}>{y}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={styles.label}>Major</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Computer Science"
+                        placeholderTextColor="#8f6f6c"
+                        value={major}
+                        onChangeText={setMajor}
+                    />
+
+                    <View style={styles.divider} />
+
+                    <Text style={styles.label}>Height</Text>
+                    <TouchableOpacity
+                        style={styles.pickerBtn}
+                        onPress={() => setShowHeightPicker(!showHeightPicker)}
+                    >
+                        <Text style={[styles.pickerBtnText, !heightInches && { color: '#8f6f6c' }]}>
+                            {heightInches ? `${Math.floor(heightInches / 12)}'${heightInches % 12}"` : 'Select height'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {showHeightPicker && (
+                        <View style={styles.dropdownContainer}>
+                            <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true} style={styles.verticalHeightScroll}>
+                                {HEIGHT_OPTIONS.map(h => (
+                                    <TouchableOpacity
+                                        key={h.value}
+                                        style={[styles.dropdownItem, heightInches === h.value && styles.dropdownItemActive]}
+                                        onPress={() => { setHeightInches(h.value); setShowHeightPicker(false); }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, heightInches === h.value && styles.dropdownItemTextActive]}>{h.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    <Text style={styles.label}>Ethnicity</Text>
+                    <View style={styles.pillContainer}>
+                        {ETHNICITIES.map(e => (
+                            <TouchableOpacity
+                                key={e}
+                                style={[styles.pill, ethnicity === e && styles.pillActive]}
+                                onPress={() => setEthnicity(ethnicity === e ? '' : e)}
+                            >
+                                <Text style={[styles.pillText, ethnicity === e && styles.pillTextActive]}>{e}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={styles.label}>Religion</Text>
+                    <View style={styles.pillContainer}>
+                        {RELIGIONS.map(r => (
+                            <TouchableOpacity
+                                key={r}
+                                style={[styles.pill, religion === r && styles.pillActive]}
+                                onPress={() => setReligion(religion === r ? '' : r)}
+                            >
+                                <Text style={[styles.pillText, religion === r && styles.pillTextActive]}>{r}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <Text style={styles.label}>Interests</Text>
+                    <View style={styles.tagCloud}>
+                        {availableTags.map(tag => {
+                            const isActive = selectedTags.includes(tag.id);
+                            return (
+                                <TouchableOpacity
+                                    key={tag.id}
+                                    style={[styles.tag, isActive && styles.tagActive]}
+                                    onPress={() => toggleTag(tag.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.tagEmoji}>{tag.emoji}</Text>
+                                    <Text style={[styles.tagText, isActive && styles.tagTextActive]}>{tag.name}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    <View style={styles.customTagRow}>
+                        <TextInput
+                            style={styles.customTagInput}
+                            placeholder="Add a custom interest..."
+                            placeholderTextColor="#8f6f6c"
+                            value={customTagText}
+                            onChangeText={setCustomTagText}
+                            onSubmitEditing={addCustomTag}
+                            blurOnSubmit={false}
+                        />
+                        <TouchableOpacity style={styles.customTagAddBtn} onPress={addCustomTag}>
+                            <Text style={styles.customTagAddBtnText}>+</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fcf9f8' },
-    header: { 
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', 
+    header: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 12 : 12, paddingBottom: 16,
         borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.3)', backgroundColor: '#fff'
     },
