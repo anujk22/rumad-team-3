@@ -203,7 +203,24 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Profiles are viewable by authenticated users" ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
 CREATE POLICY "Admins can update any profile" ON public.profiles FOR UPDATE USING ( EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') );
+
+-- ============================================================
+-- 2. SECURE ACCOUNT DELETION
+-- ============================================================
+
+-- Function to allow a user to delete their own account from auth.users
+-- This must be SECURITY DEFINER to have permission to delete from auth.users
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- Data in public.profiles will be deleted automatically due to ON DELETE CASCADE
+  -- but we can explicitly delete it if we want to be sure or if we didn't have cascade.
+  -- The most important part is deleting from auth.users.
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$;
 
 -- Tags
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;

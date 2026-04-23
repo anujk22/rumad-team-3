@@ -10,7 +10,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, Touchabl
 export default function SettingsScreen() {
     const { theme: C, isDark, toggleTheme } = useTheme();
     const styles = createStyles(C);
-    const { user, profile, isAdmin, refreshProfile, signOut } = useAuth();
+    const { user, profile, isAdmin, refreshProfile, signOut, deleteAccount } = useAuth();
     const router = useRouter();
     const [showAdminModal, setShowAdminModal] = useState(false);
     const [adminSearchEmail, setAdminSearchEmail] = useState('');
@@ -50,11 +50,8 @@ export default function SettingsScreen() {
                     text: 'Delete', style: 'destructive',
                     onPress: async () => {
                         try {
-                            // Delete profile (cascades to all related data)
-                            if (user) {
-                                await supabase.from('profiles').delete().eq('id', user.id);
-                            }
-                            await signOut();
+                            await deleteAccount();
+                            // Sign out and redirection is handled by deleteAccount and AuthProvider
                         } catch (err: any) {
                             Alert.alert('Error', err.message || 'Failed to delete account.');
                         }

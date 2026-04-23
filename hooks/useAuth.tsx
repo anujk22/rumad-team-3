@@ -36,6 +36,7 @@ type AuthContextType = {
   isEventManager: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -45,8 +46,9 @@ const AuthContext = createContext<AuthContextType>({
   initialized: false,
   isAdmin: false,
   isEventManager: false,
-  refreshProfile: async () => {},
-  signOut: async () => {},
+  refreshProfile: async () => { },
+  signOut: async () => { },
+  deleteAccount: async () => { },
 });
 
 export function useAuth() {
@@ -92,6 +94,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, []);
 
+  const handleDeleteAccount = useCallback(async () => {
+    const { error } = await supabase.rpc('delete_user_account');
+    if (error) throw error;
+    await handleSignOut();
+  }, [handleSignOut]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
@@ -131,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isEventManager,
         refreshProfile,
         signOut: handleSignOut,
+        deleteAccount: handleDeleteAccount,
       }}>
       {children}
     </AuthContext.Provider>
