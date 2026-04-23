@@ -1,15 +1,14 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { C, F, formatEventTime } from '@/lib/helpers';
+import { useTheme } from '@/hooks/useTheme';
+import { F, formatEventTime } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
-import { Clock, Image as ImageIcon, MapPin, Plus, Star, User, X } from 'lucide-react-native';
+import { Clock, MapPin, Plus, Star, User, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, Modal, Platform, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View,
+  ActivityIndicator, Alert,
+  Modal, Platform, ScrollView,
+  StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View
 } from 'react-native';
 
 type Meetup = {
@@ -22,8 +21,8 @@ type Meetup = {
 };
 
 export default function MeetupsScreen() {
-    const { theme: C } = useTheme();
-    const styles = createStyles(C);
+  const { theme: C } = useTheme();
+  const styles = createStyles(C);
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
@@ -40,16 +39,14 @@ export default function MeetupsScreen() {
 
   const fetchMeetups = async () => {
     try {
-      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('meetups')
         .select('*, profiles!creator_id(first_name)')
-        .gte('meetup_time', new Date(Date.now() - 3600000 * 2).toISOString()) // show active + recent
+        .gte('meetup_time', new Date(Date.now() - 3600000 * 2).toISOString())
         .order('meetup_time', { ascending: true });
 
       if (error) throw error;
 
-      // Get attendee counts and user's attendance
       const enriched: Meetup[] = [];
       for (const m of data || []) {
         const { count } = await supabase
@@ -68,11 +65,7 @@ export default function MeetupsScreen() {
           isAttending = !!att;
         }
 
-        enriched.push({
-          ...m,
-          attendee_count: count || 0,
-          am_attending: isAttending,
-        });
+        enriched.push({ ...m, attendee_count: count || 0, am_attending: isAttending });
       }
 
       setMeetups(enriched);
@@ -89,7 +82,6 @@ export default function MeetupsScreen() {
     if (!meetup) return;
 
     if (meetup.am_attending) {
-      // Leave
       await supabase.from('meetup_attendees').delete().eq('meetup_id', meetupId).eq('user_id', user.id);
     } else {
       if (meetup.attendee_count >= meetup.max_capacity) {
@@ -102,26 +94,21 @@ export default function MeetupsScreen() {
   };
 
   const handleDelete = async (meetupId: string) => {
-    Alert.alert(
-      'End Meetup',
-      'Are you sure you want to end this meetup?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'End',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase.from('meetups').delete().eq('id', meetupId);
-              if (error) throw error;
-              await fetchMeetups();
-            } catch (err: any) {
-              Alert.alert('Error', err.message);
-            }
+    Alert.alert('End Meetup', 'Are you sure you want to end this meetup?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'End', style: 'destructive',
+        onPress: async () => {
+          try {
+            const { error } = await supabase.from('meetups').delete().eq('id', meetupId);
+            if (error) throw error;
+            await fetchMeetups();
+          } catch (err: any) {
+            Alert.alert('Error', err.message);
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const handleCreate = async () => {
@@ -136,7 +123,7 @@ export default function MeetupsScreen() {
         title: newTitle.trim(),
         location: newLocation.trim(),
         description: newDesc.trim() || null,
-        meetup_time: new Date().toISOString(), // Default to now
+        meetup_time: new Date().toISOString(),
         max_capacity: 20,
       });
       if (error) throw error;
@@ -152,7 +139,7 @@ export default function MeetupsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.surfaceContainer, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: C.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={C.primary} size="large" />
       </View>
     );
@@ -175,12 +162,11 @@ export default function MeetupsScreen() {
             <Text style={styles.pageTitle}>Meetups</Text>
           </View>
 
-          {/* Featured meetup */}
           {featured ? (
             <View style={styles.relativeWrap}>
               {isHappeningNow(featured.meetup_time) && (
                 <View style={styles.badgeRoyal}>
-                  <MaterialCommunityIcons name="run-fast" size={12} color={C.onTertiary} />
+                  <MaterialCommunityIcons name="run-fast" size={12} color="#1b1c1c" />
                   <Text style={styles.badgeRoyalText}>ACTIVE NOW</Text>
                 </View>
               )}
@@ -205,7 +191,7 @@ export default function MeetupsScreen() {
                     </View>
                   </View>
                   <View style={styles.featMetaLayer}>
-                    <View style={[styles.pillOutline, { backgroundColor: 'rgba(255,218,214,0.3)' }]}>
+                    <View style={[styles.pillOutline, { backgroundColor: C.primaryAlpha }]}>
                       <Text style={[styles.pillLabel, { color: C.primary }]}>{featured.attendee_count}/{featured.max_capacity} SEATS</Text>
                     </View>
                   </View>
@@ -224,7 +210,6 @@ export default function MeetupsScreen() {
             </View>
           ) : null}
 
-          {/* Rest of meetups */}
           <View style={styles.meetupGridContainer}>
             <View style={isTablet ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16 } : { flexDirection: 'column', gap: 16 }}>
               {rest.map(meetup => (
@@ -234,14 +219,14 @@ export default function MeetupsScreen() {
                   </View>
                   <View style={styles.meetupHeader}>
                     <View style={styles.avatarRow}>
-                      <View style={styles.avatarCircle}><User size={16} color="#888" /></View>
+                      <View style={styles.avatarCircle}><User size={16} color={C.secondary} /></View>
                       {meetup.attendee_count > 0 && (
                         <View style={[styles.avatarCircle, { marginLeft: -8, backgroundColor: C.surfaceContainerHighest }]}>
                           <Text style={styles.avatarCount}>+{meetup.attendee_count}</Text>
                         </View>
                       )}
                     </View>
-                    <View style={[styles.pillOutline, { backgroundColor: isHappeningNow(meetup.meetup_time) ? 'rgba(255,218,214,0.3)' : 'rgba(255,225,109,0.3)' }]}>
+                    <View style={[styles.pillOutline, { backgroundColor: isHappeningNow(meetup.meetup_time) ? C.primaryAlpha : C.tertiaryAlpha }]}>
                       <Text style={[styles.pillLabel, { color: isHappeningNow(meetup.meetup_time) ? C.primary : C.tertiary }]}>
                         {isHappeningNow(meetup.meetup_time) ? 'ACTIVE' : formatEventTime(meetup.meetup_time).toUpperCase()}
                       </Text>
@@ -258,10 +243,7 @@ export default function MeetupsScreen() {
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       {user?.id === meetup.creator_id && (
-                        <TouchableOpacity
-                          style={styles.deleteBtnSmall}
-                          onPress={() => handleDelete(meetup.id)}
-                        >
+                        <TouchableOpacity style={styles.deleteBtnSmall} onPress={() => handleDelete(meetup.id)}>
                           <Text style={styles.deleteBtnSmallText}>END</Text>
                         </TouchableOpacity>
                       )}
@@ -269,7 +251,7 @@ export default function MeetupsScreen() {
                         style={[styles.joinBtnSmall, meetup.am_attending && styles.joinBtnSmallActive]}
                         onPress={() => handleJoin(meetup.id)}
                       >
-                        <Text style={[styles.joinBtnSmallText, meetup.am_attending && { color: C.card }]}>
+                        <Text style={[styles.joinBtnSmallText, meetup.am_attending && { color: C.onPrimary }]}>
                           {meetup.am_attending ? "I'M IN ✓" : "JOIN"}
                         </Text>
                       </TouchableOpacity>
@@ -296,7 +278,6 @@ export default function MeetupsScreen() {
         <Plus size={32} color={C.onPrimary} />
       </TouchableOpacity>
 
-      {/* Create meetup modal */}
       <Modal visible={showModal} animationType="slide" presentationStyle="formSheet">
         <ScrollView style={styles.modalBg} contentContainerStyle={styles.modalInner} keyboardShouldPersistTaps="handled">
           <View style={styles.modalTopBar}>
@@ -335,7 +316,7 @@ const createStyles = (C: any) => StyleSheet.create({
   relativeWrap: { position: 'relative', marginBottom: 24 },
   badgeRoyal: { position: 'absolute', top: -12, right: 0, backgroundColor: '#dbc118', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, zIndex: 10, transform: [{ rotate: '3deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
   badgeRoyalText: { fontFamily: F.labelExtra, fontSize: 10, color: '#1b1c1c', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
-  featCardContainer: { backgroundColor: '#ffffff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 30, elevation: 3, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)' },
+  featCardContainer: { backgroundColor: C.card, borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 30, elevation: 3, borderWidth: 1.5, borderColor: C.outlineAlpha },
   featSubheadRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   featSubheadText: { fontFamily: F.labelExtra, fontSize: 12, letterSpacing: 1.5, color: '#a38c1a' },
   featTitleText: { fontFamily: F.display, fontSize: 32, color: C.onSurface, lineHeight: 36 },
@@ -346,11 +327,11 @@ const createStyles = (C: any) => StyleSheet.create({
   pillOutline: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   pillLabel: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 0.5 },
   dealBtn: { flex: 1, backgroundColor: C.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4 },
-  dealBtnLabel: { fontFamily: F.labelExtra, color: C.card, fontSize: 14, letterSpacing: 2 },
-  deleteBtn: { backgroundColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 20, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)' },
-  deleteBtnLabel: { fontFamily: F.labelExtra, color: '#1b1c1c', fontSize: 14, letterSpacing: 2 },
+  dealBtnLabel: { fontFamily: F.labelExtra, color: C.onPrimary, fontSize: 14, letterSpacing: 2 },
+  deleteBtn: { backgroundColor: C.surfaceContainerHigh, paddingHorizontal: 20, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4, borderWidth: 1.5, borderColor: C.outlineAlpha },
+  deleteBtnLabel: { fontFamily: F.labelExtra, color: C.onSurface, fontSize: 14, letterSpacing: 2 },
   meetupGridContainer: { marginBottom: 32, gap: 16 },
-  meetupCard: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 2, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden', minHeight: 200, justifyContent: 'space-between' },
+  meetupCard: { backgroundColor: C.card, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 2, borderWidth: 1.5, borderColor: C.outlineAlpha, position: 'relative', overflow: 'hidden', minHeight: 200, justifyContent: 'space-between' },
   watermarkContainer: { position: 'absolute', top: 16, right: 16, zIndex: 0 },
   meetupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, zIndex: 1 },
   avatarRow: { flexDirection: 'row' },
@@ -364,16 +345,16 @@ const createStyles = (C: any) => StyleSheet.create({
   joinBtnSmall: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: C.primary },
   joinBtnSmallActive: { backgroundColor: C.primary, borderColor: C.primary },
   joinBtnSmallText: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 1, color: C.primary },
-  deleteBtnSmall: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)', backgroundColor: 'rgba(0,0,0,0.02)' },
-  deleteBtnSmallText: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 1, color: '#1b1c1c' },
+  deleteBtnSmall: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: C.outlineAlpha, backgroundColor: C.surfaceContainerHigh },
+  deleteBtnSmallText: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 1, color: C.onSurface },
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontFamily: F.display, fontSize: 22, color: `${C.onSurface}99` },
   emptyBody: { fontFamily: F.body, fontSize: 14, color: C.secondary },
   fabBtn: { position: 'absolute', bottom: Platform.OS === 'ios' ? 40 : 24, right: 24, width: 64, height: 64, borderRadius: 32, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 8 },
-  modalBg: { flex: 1, backgroundColor: C.surfaceContainerLowest },
+  modalBg: { flex: 1, backgroundColor: C.surface },
   modalInner: { padding: 24, paddingBottom: 48 },
   modalTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitleText: { fontFamily: F.display, fontSize: 26, color: C.onSurface, letterSpacing: -0.8 },
   modalInputLabel: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.onSurfaceVariant, textTransform: 'uppercase', marginBottom: 8 },
-  modalInputLine: { fontFamily: F.body, backgroundColor: C.surfaceContainerLowest, color: C.onSurface, borderRadius: 14, height: 56, paddingHorizontal: 18, fontSize: 16, marginBottom: 20, borderWidth: 1.5, borderColor: C.outlineAlpha },
+  modalInputLine: { fontFamily: F.body, backgroundColor: C.surfaceContainerLow, color: C.onSurface, borderRadius: 14, height: 56, paddingHorizontal: 18, fontSize: 16, marginBottom: 20, borderWidth: 1.5, borderColor: C.outlineAlpha },
 });

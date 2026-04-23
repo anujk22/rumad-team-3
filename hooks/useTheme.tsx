@@ -56,17 +56,17 @@ export const DarkTheme: ThemePalette = {
     surface: '#111111',
     background: '#111111',
     card: '#1e1e1e',
-    primary: '#f2a900',
-    onPrimary: '#000000',
+    primary: '#d4c8a8',
+    onPrimary: '#1a1710',
     secondary: '#a3a3a3',
     onSurface: '#f0f0f0',
-    tertiary: '#c8a600',
-    onTertiary: '#000000',
+    tertiary: '#b8aa88',
+    onTertiary: '#1a1710',
     onSurfaceVariant: '#cccccc',
     outline: '#555555',
     outlineVariant: 'rgba(255,255,255,0.12)',
-    primaryAlpha: 'rgba(242, 169, 0, 0.15)',
-    tertiaryAlpha: 'rgba(200, 166, 0, 0.15)',
+    primaryAlpha: 'rgba(212, 200, 168, 0.15)',
+    tertiaryAlpha: 'rgba(184, 170, 136, 0.15)',
     outlineAlpha: 'rgba(255, 255, 255, 0.1)',
     blackAlpha: 'rgba(0, 0, 0, 0.5)',
     whiteAlpha: 'rgba(10, 10, 10, 0.8)',
@@ -103,7 +103,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 } else if (storedTheme === 'light') {
                     setIsDark(false);
                 } else {
-                    setIsDark(systemColorScheme === 'dark');
+                    // Default to light mode regardless of system preference
+                    setIsDark(false);
                 }
             } catch (err) { }
             setLoaded(true);

@@ -10,7 +10,7 @@ import { Animated, Image, Platform, Text, TouchableOpacity, View } from 'react-n
 function FullHouseHeader() {
   const router = useRouter();
   const { status, queueCount, chatId, clearReady } = useQueue();
-  const { theme: C } = useTheme();
+  const { theme: C, isDark } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -47,8 +47,10 @@ function FullHouseHeader() {
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Image
-          source={require('../../assets/images/fullhouse_logo.png')}
-          style={{ width: 28, height: 28, marginRight: 10 }}
+          source={isDark
+            ? require('../../assets/images/fullhouse_darkmode.png')
+            : require('../../assets/images/fullhouse_logo.png')}
+          style={{ width: 36, height: 36, marginRight: 10, marginTop: -2 }}
           resizeMode="contain"
         />
         <Text style={{

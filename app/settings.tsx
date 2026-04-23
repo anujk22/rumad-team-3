@@ -1,6 +1,6 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { F, formatHeight } from '@/lib/helpers';
+import { useTheme } from '@/hooks/useTheme';
+import { F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Bell, ChevronRight, Crown, LogOut, Search, Shield, Trash2, User as UserIcon } from 'lucide-react-native';
@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
-    const { theme: C } = useTheme();
+    const { theme: C, isDark, toggleTheme } = useTheme();
     const styles = createStyles(C);
     const { user, profile, isAdmin, refreshProfile, signOut } = useAuth();
     const router = useRouter();
@@ -198,6 +198,21 @@ export default function SettingsScreen() {
             {/* System */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>System</Text>
+
+                {/* Dark Mode Toggle */}
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleInfo}>
+                        <Text style={styles.toggleLabel}>🌙 Dark Mode</Text>
+                        <Text style={styles.toggleDesc}>Switch between light and dark theme</Text>
+                    </View>
+                    <Switch
+                        value={isDark}
+                        onValueChange={toggleTheme}
+                        trackColor={{ false: '#ddd', true: 'rgba(212,200,168,0.4)' }}
+                        thumbColor={isDark ? '#d4c8a8' : '#ccc'}
+                    />
+                </View>
+
                 <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Silo</Text>
                     <Text style={styles.infoValue}>Rutgers-New Brunswick</Text>

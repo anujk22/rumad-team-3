@@ -1,10 +1,10 @@
+import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { useAuth, Profile } from '@/hooks/useAuth';
-import { C, F, formatTimeAgo, getInitials } from '@/lib/helpers';
+import { F, formatTimeAgo, getInitials } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { MessageSquare, Search, User } from 'lucide-react-native';
+import { Search, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -20,8 +20,8 @@ type ChatPreview = {
 };
 
 export default function ChatsScreen() {
-    const { theme: C } = useTheme();
-    const styles = createStyles(C);
+  const { theme: C } = useTheme();
+  const styles = createStyles(C);
   const { user, profile } = useAuth();
   const router = useRouter();
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -173,7 +173,7 @@ export default function ChatsScreen() {
           <Text style={styles.sectionLabel}>CONVERSATIONS</Text>
           {filteredChats.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="chat-outline" size={48} color={C.outlineVariant} />
+              <MaterialCommunityIcons name="chat-outline" size={48} color={C.outlineAlpha} />
               <Text style={styles.emptyTitle}>No conversations yet</Text>
               <Text style={styles.emptyBody}>Swipe right or hit "Deal Me In" to start chatting!</Text>
             </View>
@@ -220,7 +220,7 @@ export default function ChatsScreen() {
 }
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainer },
+  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
   scrollContent: { padding: 20 },
   pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1, marginBottom: 16 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 14, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: C.outlineAlpha },

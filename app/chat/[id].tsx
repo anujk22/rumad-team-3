@@ -1,11 +1,11 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { C, F, getInitials } from '@/lib/helpers';
+import { useTheme } from '@/hooks/useTheme';
+import { F, getInitials } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Image as ImageIcon, Send, User } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Image as ImageIcon, Send } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Image, KeyboardAvoidingView,
@@ -30,8 +30,9 @@ type Participant = {
 };
 
 export default function ChatScreen() {
-    const { theme: C } = useTheme();
-    const styles = createStyles(C);
+  const { theme: C } = useTheme();
+  const styles = createStyles(C);
+  const msgStyles = createMsgStyles(C);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const router = useRouter();
@@ -50,7 +51,6 @@ export default function ChatScreen() {
     loadChat();
     loadMessages();
 
-    // Real-time subscription
     const channel = supabase
       .channel(`chat-${id}`)
       .on(
@@ -58,7 +58,6 @@ export default function ChatScreen() {
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${id}` },
         async (payload) => {
           const newMsg = payload.new as any;
-          // Get sender info
           const sender = participants.find(p => p.user_id === newMsg.sender_id);
           const enrichedMsg: Message = {
             id: newMsg.id,
@@ -120,7 +119,6 @@ export default function ChatScreen() {
 
       if (!data) { setLoading(false); return; }
 
-      // Get all sender profiles
       const senderIds = [...new Set(data.map(m => m.sender_id))];
       const { data: profilesData } = await supabase
         .from('profiles')
@@ -227,7 +225,6 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ArrowLeft size={22} color={C.onSurface} />
@@ -240,7 +237,6 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Messages */}
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={C.primary} size="large" />
@@ -257,7 +253,6 @@ export default function ChatScreen() {
         />
       )}
 
-      {/* Input bar */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputBar}>
           <TouchableOpacity style={styles.mediaBtn} onPress={sendImage}>
@@ -277,7 +272,7 @@ export default function ChatScreen() {
             onPress={sendMessage}
             disabled={!input.trim() || sending}
           >
-            <Send size={18} color={input.trim() ? C.card : C.outline} />
+            <Send size={18} color={input.trim() ? C.onPrimary : C.outline} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -285,7 +280,7 @@ export default function ChatScreen() {
   );
 }
 
-const msgStyles = StyleSheet.create({
+const createMsgStyles = (C: any) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 8, paddingHorizontal: 16 },
   rowMine: { flexDirection: 'row-reverse' },
   avatarSmall: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 8 },
@@ -293,17 +288,17 @@ const msgStyles = StyleSheet.create({
   avatarInitials: { fontFamily: F.labelExtra, fontSize: 10, color: C.primary },
   bubble: { maxWidth: '75%', padding: 12, borderRadius: 18 },
   bubbleMine: { backgroundColor: C.primary, borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: C.surfaceContainerLowest, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: C.outlineAlpha },
+  bubbleOther: { backgroundColor: C.surfaceContainerHigh, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: C.outlineAlpha },
   senderName: { fontFamily: F.label, fontSize: 10, color: C.tertiary, marginBottom: 4 },
   text: { fontFamily: F.body, fontSize: 15, color: C.onSurface, lineHeight: 21 },
-  textMine: { color: C.card },
+  textMine: { color: C.onPrimary },
   time: { fontFamily: F.label, fontSize: 9, color: C.secondary, textAlign: 'right', marginTop: 4 },
   timeMine: { color: 'rgba(255,255,255,0.7)' },
   mediaImg: { width: 200, height: 200, borderRadius: 12, marginBottom: 8 },
 });
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainer },
+  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
