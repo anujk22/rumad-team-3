@@ -20,8 +20,8 @@ const { width, height } = Dimensions.get('window');
 
 
 export default function WelcomeScreen() {
-    const { theme: C } = useTheme();
-    const styles = createStyles(C);
+  const { theme: C } = useTheme();
+  const styles = createStyles(C);
   const router = useRouter();
 
   // Animation values
@@ -110,11 +110,11 @@ export default function WelcomeScreen() {
           >
             <Text style={styles.eyebrow}>EXCLUSIVE ACCESS</Text>
             <Text style={styles.headline}>
-              Join the{'\n'}
-              <Text style={styles.headlineAccent}>Inner Circle.</Text>
+              Take Your{'\n'}
+              <Text style={styles.headlineAccent}>Seat at the Table</Text>
             </Text>
             <Text style={styles.body}>
-              A Curated Collegiate Experience for{' '}
+              A curated collegiate experience for{' '}
               <Text style={styles.bodyBold}>Rutgers students</Text>
               {'. Deal yourself in.'}
             </Text>
@@ -148,7 +148,6 @@ export default function WelcomeScreen() {
           {/* ── Footer ── */}
           <Animated.View style={[styles.footer, { opacity: footerFade }]}>
             <Text style={styles.footerSuits}>♦  ♥  ♣  ♠</Text>
-            <Text style={styles.footerQuote}>The Table is Set.</Text>
           </Animated.View>
 
         </Animated.View>
@@ -272,9 +271,9 @@ const createStyles = (C: any) => StyleSheet.create({
     marginBottom: 12,
   },
   headline: {
-    fontSize: 48,
-    lineHeight: 52,
-    fontWeight: '800',
+    fontFamily: 'AbhayaLibre_800ExtraBold',
+    fontSize: 52,
+    lineHeight: 56,
     color: C.onSurface,
     textAlign: 'center',
     letterSpacing: -1.5,
@@ -282,17 +281,17 @@ const createStyles = (C: any) => StyleSheet.create({
   },
   headlineAccent: {
     color: C.primary,
-    fontStyle: 'italic',
   },
   body: {
+    fontFamily: 'Manrope_400Regular',
     fontSize: 17,
     lineHeight: 26,
     color: C.secondary,
     textAlign: 'center',
-    maxWidth: 280,
+    maxWidth: 320,
   },
   bodyBold: {
-    fontWeight: '600',
+    fontFamily: 'Manrope_700Bold',
     color: C.onSurface,
   },
 
