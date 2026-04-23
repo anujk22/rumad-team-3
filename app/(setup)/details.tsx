@@ -1,5 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -61,6 +62,10 @@ export default function DetailsScreen() {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                    <Text style={styles.backBtnText}>← Back</Text>
+                </TouchableOpacity>
+
                 <View style={styles.stepRow}>
                     {[1, 2, 3, 4, 5].map(s => (
                         <View key={s} style={[styles.stepDot, s <= 2 && styles.stepDotActive]} />
@@ -96,29 +101,43 @@ export default function DetailsScreen() {
                 />
 
                 <Text style={styles.label}>Height <Text style={styles.optional}>(optional)</Text></Text>
-                <TouchableOpacity
-                    style={styles.pickerBtn}
-                    onPress={() => setShowHeightPicker(!showHeightPicker)}
-                >
-                    <Text style={[styles.pickerBtnText, !heightInches && { color: '#8f6f6c' }]}>
-                        {heightInches ? `${Math.floor(heightInches / 12)}'${heightInches % 12}"` : 'Select height'}
-                    </Text>
-                </TouchableOpacity>
-                {showHeightPicker && (
-                    <View style={styles.dropdownContainer}>
-                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true} style={styles.verticalHeightScroll}>
-                            {HEIGHT_OPTIONS.map(h => (
-                                <TouchableOpacity
-                                    key={h.value}
-                                    style={[styles.dropdownItem, heightInches === h.value && styles.dropdownItemActive]}
-                                    onPress={() => { setHeightInches(h.value); setShowHeightPicker(false); }}
-                                >
-                                    <Text style={[styles.dropdownItemText, heightInches === h.value && styles.dropdownItemTextActive]}>{h.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                <View style={styles.heightContainer}>
+                    <View style={styles.heightDisplay}>
+                        <Text style={styles.heightValueText}>
+                            {heightInches ? `${Math.floor(heightInches / 12)}'${heightInches % 12}"` : '—'}
+                        </Text>
+                        <View style={styles.manualOverride}>
+                            <TextInput
+                                style={styles.manualInput}
+                                placeholder="Inches"
+                                keyboardType="number-pad"
+                                value={heightInches ? heightInches.toString() : ''}
+                                onChangeText={(val) => {
+                                    const num = parseInt(val);
+                                    if (!val) setHeightInches(null);
+                                    else if (!isNaN(num)) setHeightInches(Math.min(Math.max(num, 48), 84));
+                                }}
+                            />
+                            <Text style={styles.manualLabel}>in.</Text>
+                        </View>
                     </View>
-                )}
+
+                    <Slider
+                        style={styles.slider}
+                        minimumValue={48}
+                        maximumValue={84}
+                        step={1}
+                        value={heightInches || 68}
+                        onValueChange={setHeightInches}
+                        minimumTrackTintColor="#af101a"
+                        maximumTrackTintColor="rgba(228,190,186,0.6)"
+                        thumbTintColor="#af101a"
+                    />
+                    <View style={styles.sliderLabels}>
+                        <Text style={styles.sliderLimitText}>4'0"</Text>
+                        <Text style={styles.sliderLimitText}>7'0"</Text>
+                    </View>
+                </View>
 
                 <Text style={styles.label}>Ethnicity <Text style={styles.optional}>(optional)</Text></Text>
                 <View style={styles.pillContainer}>
@@ -168,7 +187,9 @@ export default function DetailsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fcf9f8' },
-    scrollContent: { padding: 24, paddingTop: Platform.OS === 'ios' ? 70 : 56, paddingBottom: 40 },
+    scrollContent: { padding: 24, paddingTop: Platform.OS === 'ios' ? 52 : 40, paddingBottom: 40 },
+    backBtn: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 16 },
+    backBtnText: { fontSize: 14, color: '#af101a', fontWeight: '700', letterSpacing: 0.5 },
     stepRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
     stepDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(228,190,186,0.5)' },
     stepDotActive: { backgroundColor: '#af101a' },
@@ -179,19 +200,20 @@ const styles = StyleSheet.create({
     label: { color: '#5b403d', fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1.5 },
     optional: { color: '#8f6f6c', fontWeight: '400', textTransform: 'none', letterSpacing: 0 },
     input: { backgroundColor: '#ffffff', color: '#1b1c1c', height: 56, borderRadius: 14, paddingHorizontal: 18, fontSize: 16, marginBottom: 24, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
+    heightContainer: { marginBottom: 32 },
+    heightDisplay: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 },
+    heightValueText: { fontSize: 32, fontWeight: '800', color: '#af101a' },
+    manualOverride: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    manualInput: { width: 60, height: 40, backgroundColor: '#ffffff', borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)', textAlign: 'center', fontSize: 14, color: '#1b1c1c' },
+    manualLabel: { fontSize: 12, color: '#8f6f6c', fontWeight: '600' },
+    slider: { width: '100%', height: 40 },
+    sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
+    sliderLimitText: { fontSize: 12, color: '#8f6f6c', fontWeight: '600' },
     pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
     pill: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.5)', backgroundColor: '#ffffff' },
     pillActive: { backgroundColor: '#af101a', borderColor: '#af101a' },
     pillText: { color: '#5f5e5e', fontSize: 14, fontWeight: '600' },
     pillTextActive: { color: '#ffffff' },
-    pickerBtn: { backgroundColor: '#ffffff', height: 56, borderRadius: 14, paddingHorizontal: 18, justifyContent: 'center', marginBottom: 16, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)' },
-    pickerBtnText: { fontSize: 16, color: '#1b1c1c' },
-    dropdownContainer: { backgroundColor: '#ffffff', borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(228,190,186,0.4)', marginTop: -8, marginBottom: 24, overflow: 'hidden' },
-    verticalHeightScroll: { maxHeight: 200 },
-    dropdownItem: { paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(228,190,186,0.2)' },
-    dropdownItemActive: { backgroundColor: 'rgba(175,16,26,0.08)' },
-    dropdownItemText: { fontSize: 16, color: '#1b1c1c' },
-    dropdownItemTextActive: { color: '#af101a', fontWeight: '700' },
     charCount: { fontSize: 12, color: '#8f6f6c', textAlign: 'right', marginTop: -20, marginBottom: 24 },
     button: { backgroundColor: '#af101a', height: 56, borderRadius: 14, justifyContent: 'center', alignItems: 'center', shadowColor: '#af101a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
     buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '700', letterSpacing: 2 },

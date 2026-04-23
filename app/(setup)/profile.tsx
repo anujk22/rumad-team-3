@@ -1,5 +1,5 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -51,6 +51,10 @@ export default function ProfileSetupScreen() {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                    <Text style={styles.backBtnText}>← Back</Text>
+                </TouchableOpacity>
+
                 {/* Step indicator */}
                 <View style={styles.stepRow}>
                     {[1, 2, 3, 4, 5].map(s => (
@@ -122,7 +126,9 @@ export default function ProfileSetupScreen() {
 
 const createStyles = (C: any) => StyleSheet.create({
     container: { flex: 1, backgroundColor: C.surface },
-    scrollContent: { padding: 24, paddingTop: Platform.OS === 'ios' ? 70 : 56, paddingBottom: 40 },
+    scrollContent: { padding: 24, paddingTop: Platform.OS === 'ios' ? 52 : 40, paddingBottom: 40 },
+    backBtn: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 16 },
+    backBtnText: { fontSize: 14, color: C.primary, fontWeight: '700', letterSpacing: 0.5 },
     stepRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
     stepDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.outlineAlpha },
     stepDotActive: { backgroundColor: C.primary },
