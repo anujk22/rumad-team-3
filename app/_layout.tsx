@@ -45,7 +45,7 @@ function RootLayoutNav() {
         router.replace('/(setup)/profile');
       }
     } else if (profile && profile.onboarding_completed) {
-      if (inAuthGroup) {
+      if (inAuthGroup || inSetupGroup) {
         router.replace('/(tabs)');
       }
     }
