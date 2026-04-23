@@ -1,5 +1,4 @@
 import { useTheme } from '@/hooks/useTheme';
-import { isRutgersEmail } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -17,67 +16,37 @@ import {
     View,
 } from 'react-native';
 
-
-
-export default function SignupScreen() {
+export default function ResetPasswordScreen() {
     const { theme: C } = useTheme();
     const styles = createStyles(C);
-    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const handleSendOtp = async () => {
-        const trimmedEmail = email.trim().toLowerCase();
-
-        if (!isRutgersEmail(trimmedEmail)) {
-            Alert.alert(
-                'Rutgers Only',
-                'You must use a valid @rutgers.edu or @scarletmail.rutgers.edu email to join Full House.'
-            );
+    const handleResetPassword = async () => {
+        if (password.length < 6) {
+            Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Mismatch', 'Passwords do not match.');
             return;
         }
 
         setLoading(true);
-        try {
-            // Check if an account already exists for this email
-            const { data: existingProfile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('email', trimmedEmail)
-                .maybeSingle();
+        const { error } = await supabase.auth.updateUser({ password });
+        setLoading(false);
 
-            if (existingProfile) {
-                Alert.alert(
-                    'Account Already Exists',
-                    'An account with this email already exists. Please log in instead.',
-                    [
-                        { text: 'Go to Login', onPress: () => router.replace('/(auth)/login') },
-                        { text: 'Cancel', style: 'cancel' },
-                    ]
-                );
-                setLoading(false);
-                return;
-            }
-
-            const { error } = await supabase.auth.signInWithOtp({
-                email: trimmedEmail,
-                options: {
-                    shouldCreateUser: true,
-                },
-            });
-
-            if (error) {
-                Alert.alert('Error', error.message);
-            } else {
-                router.push({
-                    pathname: '/(auth)/verify-otp',
-                    params: { email: trimmedEmail, isNewUser: 'true' },
-                });
-            }
-        } catch (err: any) {
-            Alert.alert('Error', err.message || 'Something went wrong.');
-        } finally {
-            setLoading(false);
+        if (error) {
+            Alert.alert('Error', error.message);
+        } else {
+            // Sign out the recovery session so the auth listener
+            // doesn't auto-redirect before the user logs in fresh.
+            await supabase.auth.signOut();
+            Alert.alert('Success', 'Your password has been updated. Please log in.', [
+                { text: 'OK', onPress: () => router.replace('/(auth)/login') }
+            ]);
         }
     };
 
@@ -86,7 +55,7 @@ export default function SignupScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.root}
         >
-            <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
+            <StatusBar barStyle="light-content" backgroundColor={C.surface} />
 
             <View style={[styles.blob, styles.blobTopLeft]} />
             <View style={[styles.blob, styles.blobBottomRight]} />
@@ -96,55 +65,49 @@ export default function SignupScreen() {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <Text style={styles.backBtnText}>← Back</Text>
-                </TouchableOpacity>
-
                 <View style={styles.content}>
-                    <Text style={styles.eyebrow}>DEAL YOURSELF IN</Text>
-                    <Text style={styles.headline}>Create Account</Text>
-                    <Text style={styles.subtext}>
-                        Enter your Rutgers email and we'll send you a verification code.
-                    </Text>
+                    <Text style={styles.eyebrow}>SECURITY UPDATE</Text>
+                    <Text style={styles.headline}>New Password</Text>
+                    <Text style={styles.subtext}>Set a strong password to secure your account.</Text>
 
                     <View style={styles.divider} />
 
-                    <Text style={styles.label}>Rutgers Email</Text>
+                    <Text style={styles.label}>New Password</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="NetID@scarletmail.rutgers.edu"
+                        placeholder="Enter new password"
                         placeholderTextColor={C.outline}
-                        keyboardType="email-address"
+                        secureTextEntry
                         autoCapitalize="none"
-                        autoCorrect={false}
-                        value={email}
-                        onChangeText={setEmail}
+                        value={password}
+                        onChangeText={setPassword}
+                    />
+
+                    <Text style={styles.label}>Confirm New Password</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Verify new password"
+                        placeholderTextColor={C.outline}
+                        secureTextEntry
+                        autoCapitalize="none"
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
                     />
 
                     <TouchableOpacity
                         style={[
                             styles.primaryBtn,
-                            !email && styles.primaryBtnDisabled,
+                            (!password || !confirmPassword) && styles.primaryBtnDisabled,
                         ]}
-                        onPress={handleSendOtp}
-                        disabled={loading || !email}
+                        onPress={handleResetPassword}
+                        disabled={loading || !password || !confirmPassword}
                         activeOpacity={0.85}
                     >
                         {loading ? (
                             <ActivityIndicator color={C.onPrimary} />
                         ) : (
-                            <Text style={styles.primaryBtnText}>SEND VERIFICATION CODE</Text>
+                            <Text style={styles.primaryBtnText}>UPDATE PASSWORD</Text>
                         )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.linkBtn}
-                        onPress={() => router.push('/(auth)/login')}
-                    >
-                        <Text style={styles.linkBtnText}>
-                            Already have an account?{' '}
-                            <Text style={styles.linkBtnAccent}>Log In</Text>
-                        </Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -164,14 +127,7 @@ const createStyles = (C: any) => StyleSheet.create({
     blob: { position: 'absolute', width: 280, height: 280, borderRadius: 140 },
     blobTopLeft: { top: -60, left: -60, backgroundColor: C.primaryAlpha },
     blobBottomRight: { bottom: -60, right: -60, backgroundColor: 'rgba(112,93,0,0.05)' },
-    backBtn: {
-        marginTop: Platform.OS === 'ios' ? 60 : 48,
-        alignSelf: 'flex-start',
-        paddingVertical: 6,
-        paddingHorizontal: 2,
-    },
-    backBtnText: { fontSize: 15, color: C.primary, fontWeight: '600', letterSpacing: 0.3 },
-    content: { flex: 1, marginTop: 32 },
+    content: { flex: 1, marginTop: 80 },
     eyebrow: {
         fontSize: 11, letterSpacing: 3.5, fontWeight: '700',
         color: C.tertiary, textTransform: 'uppercase', marginBottom: 10,
@@ -197,9 +153,6 @@ const createStyles = (C: any) => StyleSheet.create({
     },
     primaryBtnDisabled: { backgroundColor: '#c8b0af', shadowOpacity: 0, elevation: 0 },
     primaryBtnText: { color: C.card, fontSize: 13, fontWeight: '700', letterSpacing: 4 },
-    linkBtn: { marginTop: 20, alignItems: 'center', paddingVertical: 8 },
-    linkBtnText: { fontSize: 14, color: C.secondary },
-    linkBtnAccent: { color: C.primary, fontWeight: '700' },
     bottomBar: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 3, flexDirection: 'row', opacity: 0.3,

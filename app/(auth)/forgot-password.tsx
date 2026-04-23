@@ -17,76 +17,64 @@ import {
     View,
 } from 'react-native';
 
-
-
-export default function SignupScreen() {
+export default function ForgotPasswordScreen() {
     const { theme: C } = useTheme();
     const styles = createStyles(C);
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const [sent, setSent] = useState(false);
     const router = useRouter();
 
-    const handleSendOtp = async () => {
-        const trimmedEmail = email.trim().toLowerCase();
-
-        if (!isRutgersEmail(trimmedEmail)) {
-            Alert.alert(
-                'Rutgers Only',
-                'You must use a valid @rutgers.edu or @scarletmail.rutgers.edu email to join Full House.'
-            );
+    const handleResetRequest = async () => {
+        if (!isRutgersEmail(email)) {
+            Alert.alert('Rutgers Only', 'Please use your @rutgers.edu or @scarletmail.rutgers.edu email.');
             return;
         }
 
         setLoading(true);
-        try {
-            // Check if an account already exists for this email
-            const { data: existingProfile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('email', trimmedEmail)
-                .maybeSingle();
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+            redirectTo: Platform.select({
+                web: window.location.origin + '/(auth)/reset-password',
+                default: 'rumadt3://reset-password',
+            }),
+        });
+        setLoading(false);
 
-            if (existingProfile) {
-                Alert.alert(
-                    'Account Already Exists',
-                    'An account with this email already exists. Please log in instead.',
-                    [
-                        { text: 'Go to Login', onPress: () => router.replace('/(auth)/login') },
-                        { text: 'Cancel', style: 'cancel' },
-                    ]
-                );
-                setLoading(false);
-                return;
-            }
-
-            const { error } = await supabase.auth.signInWithOtp({
-                email: trimmedEmail,
-                options: {
-                    shouldCreateUser: true,
-                },
-            });
-
-            if (error) {
-                Alert.alert('Error', error.message);
-            } else {
-                router.push({
-                    pathname: '/(auth)/verify-otp',
-                    params: { email: trimmedEmail, isNewUser: 'true' },
-                });
-            }
-        } catch (err: any) {
-            Alert.alert('Error', err.message || 'Something went wrong.');
-        } finally {
-            setLoading(false);
+        if (error) {
+            Alert.alert('Error', error.message);
+        } else {
+            setSent(true);
         }
     };
+
+    if (sent) {
+        return (
+            <View style={styles.root}>
+                <StatusBar barStyle="light-content" backgroundColor={C.surface} />
+                <View style={styles.contentCentered}>
+                    <Text style={[styles.eyebrow, { textAlign: 'center' }]}>EMAIL SENT</Text>
+                    <Text style={[styles.headline, { textAlign: 'center', fontSize: 32 }]}>Check your inbox</Text>
+                    <Text style={[styles.subtext, { textAlign: 'center', marginTop: 12 }]}>
+                        We've sent a password reset link to {'\n'}
+                        <Text style={{ fontWeight: '700', color: C.onSurface }}>{email}</Text>
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.primaryBtn, { marginTop: 40 }]}
+                        onPress={() => router.replace('/(auth)/login')}
+                    >
+                        <Text style={styles.primaryBtnText}>BACK TO LOGIN</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.root}
         >
-            <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
+            <StatusBar barStyle="light-content" backgroundColor={C.surface} />
 
             <View style={[styles.blob, styles.blobTopLeft]} />
             <View style={[styles.blob, styles.blobBottomRight]} />
@@ -101,11 +89,9 @@ export default function SignupScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.content}>
-                    <Text style={styles.eyebrow}>DEAL YOURSELF IN</Text>
-                    <Text style={styles.headline}>Create Account</Text>
-                    <Text style={styles.subtext}>
-                        Enter your Rutgers email and we'll send you a verification code.
-                    </Text>
+                    <Text style={styles.eyebrow}>RECOVER ACCESS</Text>
+                    <Text style={styles.headline}>Forgot Password?</Text>
+                    <Text style={styles.subtext}>Enter your email and we'll help you reset it.</Text>
 
                     <View style={styles.divider} />
 
@@ -126,25 +112,15 @@ export default function SignupScreen() {
                             styles.primaryBtn,
                             !email && styles.primaryBtnDisabled,
                         ]}
-                        onPress={handleSendOtp}
+                        onPress={handleResetRequest}
                         disabled={loading || !email}
                         activeOpacity={0.85}
                     >
                         {loading ? (
                             <ActivityIndicator color={C.onPrimary} />
                         ) : (
-                            <Text style={styles.primaryBtnText}>SEND VERIFICATION CODE</Text>
+                            <Text style={styles.primaryBtnText}>SEND RESET LINK</Text>
                         )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.linkBtn}
-                        onPress={() => router.push('/(auth)/login')}
-                    >
-                        <Text style={styles.linkBtnText}>
-                            Already have an account?{' '}
-                            <Text style={styles.linkBtnAccent}>Log In</Text>
-                        </Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -166,12 +142,11 @@ const createStyles = (C: any) => StyleSheet.create({
     blobBottomRight: { bottom: -60, right: -60, backgroundColor: 'rgba(112,93,0,0.05)' },
     backBtn: {
         marginTop: Platform.OS === 'ios' ? 60 : 48,
-        alignSelf: 'flex-start',
-        paddingVertical: 6,
-        paddingHorizontal: 2,
+        alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 2,
     },
     backBtnText: { fontSize: 15, color: C.primary, fontWeight: '600', letterSpacing: 0.3 },
     content: { flex: 1, marginTop: 32 },
+    contentCentered: { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
     eyebrow: {
         fontSize: 11, letterSpacing: 3.5, fontWeight: '700',
         color: C.tertiary, textTransform: 'uppercase', marginBottom: 10,
@@ -197,9 +172,6 @@ const createStyles = (C: any) => StyleSheet.create({
     },
     primaryBtnDisabled: { backgroundColor: '#c8b0af', shadowOpacity: 0, elevation: 0 },
     primaryBtnText: { color: C.card, fontSize: 13, fontWeight: '700', letterSpacing: 4 },
-    linkBtn: { marginTop: 20, alignItems: 'center', paddingVertical: 8 },
-    linkBtnText: { fontSize: 14, color: C.secondary },
-    linkBtnAccent: { color: C.primary, fontWeight: '700' },
     bottomBar: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 3, flexDirection: 'row', opacity: 0.3,

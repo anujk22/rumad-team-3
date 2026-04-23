@@ -29,11 +29,15 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inSetupGroup = segments[0] === '(setup)';
+    const onResetPassword = segments[1] === 'reset-password';
 
     if (!session) {
       if (!inAuthGroup) {
         router.replace('/(auth)');
       }
+    } else if (onResetPassword) {
+      // Always allow the reset-password screen — user arrived via email link
+      // and must be able to set a new password before being redirected anywhere.
     } else if (profile && !profile.onboarding_completed) {
       if (segments[1] === 'create-password') {
         // Let them stay on password creation
