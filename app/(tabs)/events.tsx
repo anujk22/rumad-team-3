@@ -196,7 +196,7 @@ export default function EventsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={C.primary} size="large" />
       </View>
     );
@@ -403,7 +403,7 @@ export default function EventsScreen() {
 }
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
+  root: { flex: 1, backgroundColor: C.surface },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingTop: 8, alignItems: 'center' },
   maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },

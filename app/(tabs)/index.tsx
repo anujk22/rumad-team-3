@@ -281,7 +281,7 @@ export default function DiscoverScreen() {
 }
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
+  root: { flex: 1, backgroundColor: C.surface },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 32, alignItems: 'center' },
   maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },

@@ -264,7 +264,7 @@ export default function SwipeScreen() {
 }
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainerHigh, alignItems: 'center', paddingHorizontal: 24, paddingTop: 16 },
+  root: { flex: 1, backgroundColor: C.surface, alignItems: 'center', paddingHorizontal: 24, paddingTop: 16 },
   modeRow: { width: '100%', alignItems: 'center', marginBottom: 20 },
   modeToggle: { flexDirection: 'row', backgroundColor: C.surfaceContainerHigh, borderRadius: 999, padding: 6 },
   modeBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 999 },

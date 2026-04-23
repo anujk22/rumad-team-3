@@ -220,7 +220,7 @@ export default function ChatsScreen() {
 }
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
+  root: { flex: 1, backgroundColor: C.surface },
   scrollContent: { padding: 20 },
   pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1, marginBottom: 16 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 14, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: C.outlineAlpha },

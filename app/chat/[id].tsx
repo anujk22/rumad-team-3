@@ -298,7 +298,7 @@ const createMsgStyles = (C: any) => StyleSheet.create({
 });
 
 const createStyles = (C: any) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surfaceContainerHigh },
+  root: { flex: 1, backgroundColor: C.surface },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
