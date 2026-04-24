@@ -93,6 +93,42 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     checkStatus();
   }, [user, fetchQueueCount]);
 
+  // Periodic sync while queued (Safety net for missed Realtime events)
+  useEffect(() => {
+    if (!user || status !== 'queued') return;
+
+    const syncInterval = setInterval(async () => {
+      const { data: qData } = await supabase
+        .from('live_queue')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!qData) {
+        // We aren't in the queue DB, so check if we were moved to a chat
+        const { data: part } = await supabase
+          .from('chat_participants')
+          .select('chat_id, chats(type, created_at)')
+          .eq('user_id', user.id)
+          .order('joined_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (part && (part.chats as any)?.type === 'spontaneous') {
+          const createdAt = new Date((part.chats as any).created_at).getTime();
+          if (Date.now() - createdAt < 10 * 60 * 1000) {
+            setChatId(part.chat_id);
+            setStatus('ready');
+            return;
+          }
+        }
+        setStatus('idle');
+      }
+    }, 15000);
+
+    return () => clearInterval(syncInterval);
+  }, [user, status]);
+
   // Subscribe to queue changes
   useEffect(() => {
     if (!user) return;
@@ -102,9 +138,22 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'live_queue' },
-        async () => {
+        async (payload: any) => {
           await fetchQueueCount();
-          await tryFormGroup();
+
+          // If WE were deleted from the queue, we need to know why
+          if (payload.eventType === 'DELETE' && payload.old.user_id === user.id) {
+            // Wait briefly for the chat_participants subscription to fire
+            setTimeout(async () => {
+              if (status !== 'ready') {
+                // If we aren't 'ready' after 1.5s, the match likely failed or was cancelled
+                const { data: qData } = await supabase.from('live_queue').select('id').eq('user_id', user.id).maybeSingle();
+                if (!qData) setStatus('idle');
+              }
+            }, 1500);
+          } else {
+            await tryFormGroup();
+          }
         }
       )
       .subscribe();
@@ -114,7 +163,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchQueueCount]);
+  }, [user, fetchQueueCount, status]);
 
   // Subscribe to chat participant additions (for when someone else forms a table)
   useEffect(() => {
