@@ -96,30 +96,13 @@ export default function DiscoverScreen() {
   const fetchSuitCounts = async () => {
     const counts: Record<string, number> = {};
     for (const suit of SUITS) {
-      if (suit.field === 'academic_year') {
-        const { count } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('onboarding_completed', true)
-          .eq('academic_year', suit.value);
-        counts[suit.key] = count || 0;
-      } else {
-        const { data: tagRow } = await supabase
-          .from('tags')
-          .select('id')
-          .ilike('name', `%${suit.value}%`)
-          .limit(1)
-          .maybeSingle();
-        if (tagRow) {
-          const { count } = await supabase
-            .from('user_tags')
-            .select('*', { count: 'exact', head: true })
-            .eq('tag_id', tagRow.id);
-          counts[suit.key] = count || 0;
-        } else {
-          counts[suit.key] = 0;
-        }
-      }
+      const { count } = await supabase
+        .from('chats')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'group')
+        .eq('metadata->>is_public', 'true')
+        .contains('metadata', { tags: [suit.value] } as any);
+      counts[suit.key] = count || 0;
     }
     setSuitCounts(counts);
   };
@@ -197,33 +180,6 @@ export default function DiscoverScreen() {
             {status === 'queued' ? 'FINDING YOUR TABLE...' : 'MATCH WITH 3–6 STUDENTS INSTANTLY'}
           </Text>
 
-          {/* Browse Suits */}
-          <View style={styles.suitsSection}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.sectionHeader}>Browse Suits</Text>
-              <TouchableOpacity onPress={() => router.push('/groups' as any)} activeOpacity={0.7}>
-                <Text style={styles.viewDeckText}>VIEW DECK</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.suitsGrid}>
-              {SUITS.map(suit => (
-                <TouchableOpacity
-                  key={suit.key}
-                  style={[styles.suitCard, { borderLeftColor: suit.accentColor }]}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    if (suit.field === 'tag') router.push({ pathname: '/groups', params: { tag: suit.value } } as any);
-                    else router.push('/groups' as any);
-                  }}
-                >
-                  <Text style={[styles.suitIcon, { color: suit.accentColor }]}>{suit.icon}</Text>
-                  <Text style={styles.suitLabel}>{suit.label}</Text>
-                  <Text style={styles.suitCount}>{suitCounts[suit.key] ?? '–'} Tables Open</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
           {/* Interests */}
           <View style={styles.sectionMarginInterests}>
             <View style={styles.rowBetween}>
@@ -257,6 +213,33 @@ export default function DiscoverScreen() {
                   <Text style={styles.tagChipText}>{tag.name}</Text>
                 </TouchableOpacity>
               ))}
+          </View>
+
+          {/* Browse Suits */}
+          <View style={styles.suitsSection}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionHeader}>Browse Suits</Text>
+              <TouchableOpacity onPress={() => router.push('/groups' as any)} activeOpacity={0.7}>
+                <Text style={styles.viewDeckText}>VIEW DECK</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.suitsGrid}>
+              {SUITS.map(suit => (
+                <TouchableOpacity
+                  key={suit.key}
+                  style={[styles.suitCard, { borderLeftColor: suit.accentColor }]}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    if (suit.field === 'tag') router.push({ pathname: '/groups', params: { tag: suit.value } } as any);
+                    else router.push('/groups' as any);
+                  }}
+                >
+                  <Text style={[styles.suitIcon, { color: suit.accentColor }]}>{suit.icon}</Text>
+                  <Text style={styles.suitLabel}>{suit.label}</Text>
+                  <Text style={styles.suitCount}>{suitCounts[suit.key] ?? '–'} Tables Open</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Study Crews */}
