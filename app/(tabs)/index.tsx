@@ -305,7 +305,7 @@ const createStyles = (C: any) => StyleSheet.create({
   tagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.card, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: C.outlineAlpha, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
   tagChipEmoji: { fontSize: 16 },
   tagChipText: { fontFamily: F.label, fontSize: 12, color: C.onSurface },
-  crewContainer: { backgroundColor: C.card, borderRadius: 24, padding: 24, marginTop: 16, position: 'relative', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, borderWidth: 1.5, borderColor: C.outlineAlpha },
+  crewContainer: { backgroundColor: C.card, borderRadius: 24, padding: 24, marginTop: 40, position: 'relative', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, borderWidth: 1.5, borderColor: C.outlineAlpha },
   crewWatermark: { position: 'absolute', top: 10, right: 10 },
   crewTitle: { fontFamily: F.headlineBase, fontSize: 28, color: C.onSurface, marginBottom: 8 },
   crewBody: { fontFamily: F.body, fontSize: 14, color: C.secondary, marginBottom: 24 },

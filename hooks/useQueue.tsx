@@ -150,7 +150,26 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  const tryFormGroup = useCallback(async () => {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (status === 'queued') {
+      // Force form after 30s if enough people are present
+      timerRef.current = setTimeout(() => {
+        tryFormGroup(true);
+      }, 30000 + Math.random() * 2000);
+    } else {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [status]);
+
+  const tryFormGroup = useCallback(async (isForced = false) => {
     if (!user || status === 'ready' || status === 'forming') return;
 
     const { data: queueEntries } = await supabase
@@ -165,8 +184,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     const isInBatch = queueEntries.some(e => e.user_id === user.id);
     if (!isInBatch) return;
 
-    // Only the first person in the batch creates the chat
-    if (queueEntries[0].user_id !== user.id) return;
+    // Only the first person in the batch creates the chat, unless forced fallback
+    if (queueEntries[0].user_id !== user.id && !isForced) return;
 
     try {
       setStatus('forming');

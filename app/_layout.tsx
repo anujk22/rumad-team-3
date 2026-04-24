@@ -78,6 +78,7 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="groups" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />

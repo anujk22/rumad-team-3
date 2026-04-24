@@ -4,9 +4,9 @@ import { F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Plus, Search } from 'lucide-react-native';
+import { ArrowLeft, Plus, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type PublicGroup = {
   id: string;
@@ -116,6 +116,11 @@ export default function GroupsScreen() {
 
   return (
     <View style={styles.root}>
+      <View style={styles.topHeader}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
+          <ArrowLeft size={22} color={C.onSurface} />
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Text style={styles.pageTitle}>Groups</Text>
@@ -205,7 +210,20 @@ export default function GroupsScreen() {
 
 const createStyles = (C: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },
-  scrollContent: { padding: 20 },
+  topHeader: {
+    paddingTop: Platform.OS === 'web' ? 16 : Platform.OS === 'ios' ? 54 : 44,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: C.surface,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: C.card,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: C.outlineAlpha,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 8 },
   pageTitle: { fontFamily: F.display, fontSize: 42, color: C.onSurface, letterSpacing: -1 },
   subTitle: { fontFamily: F.body, fontSize: 14, color: C.secondary, marginBottom: 18 },

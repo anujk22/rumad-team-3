@@ -67,16 +67,16 @@ function FullHouseHeader() {
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        {status === 'queued' && (
+        {(status === 'queued' || status === 'forming') && (
           <Animated.View style={{
             flexDirection: 'row', alignItems: 'center', gap: 6,
-            backgroundColor: C.tertiary, borderRadius: 999,
+            backgroundColor: status === 'forming' ? C.primary : C.tertiary, borderRadius: 999,
             paddingHorizontal: 16, paddingVertical: 8,
             opacity: pulseAnim,
           }}>
             <MaterialCommunityIcons name="cards-playing-outline" size={12} color={C.onTertiary} />
             <Text style={{ fontFamily: F.label, fontSize: 10, color: C.onTertiary, letterSpacing: 1.5 }}>
-              FINDING TABLE... {queueCount}
+              {status === 'forming' ? 'FORMING TABLE...' : `FINDING TABLE... ${queueCount}`}
             </Text>
           </Animated.View>
         )}
