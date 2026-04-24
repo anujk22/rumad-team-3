@@ -49,25 +49,48 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Check if we're already in queue
+  // Check if we're already in queue or have a ready table
   useEffect(() => {
     if (!user) return;
 
-    const checkQueue = async () => {
-      const { data, error } = await supabase
+    const checkStatus = async () => {
+      // 1. Check for recent spontaneous chats first
+      const { data: part } = await supabase
+        .from('chat_participants')
+        .select('chat_id, joined_at, chats(type, created_at)')
+        .eq('user_id', user.id)
+        .order('joined_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (part && (part.chats as any)?.type === 'spontaneous') {
+        const createdAt = new Date((part.chats as any).created_at).getTime();
+        const now = new Date().getTime();
+        // If created in the last 5 minutes, show as ready
+        if (now - createdAt < 5 * 60 * 1000) {
+          setChatId(part.chat_id);
+          setStatus('ready');
+          await fetchQueueCount();
+          return;
+        }
+      }
+
+      // 2. Otherwise check if we're in queue
+      const { data: qData } = await supabase
         .from('live_queue')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error checking queue status:', error.message);
-      } else if (data) {
+      if (qData) {
         setStatus('queued');
+      } else {
+        setStatus('idle');
       }
       await fetchQueueCount();
     };
-    checkQueue();
+
+    checkStatus();
   }, [user, fetchQueueCount]);
 
   // Subscribe to queue changes
@@ -93,8 +116,42 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, fetchQueueCount]);
 
+  // Subscribe to chat participant additions (for when someone else forms a table)
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`user-chat-additions-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_participants',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload: any) => {
+          const { data: chat } = await supabase
+            .from('chats')
+            .select('id, type')
+            .eq('id', payload.new.chat_id)
+            .single();
+
+          if (chat?.type === 'spontaneous') {
+            setChatId(chat.id);
+            setStatus('ready');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const tryFormGroup = useCallback(async () => {
-    if (!user || status === 'ready') return;
+    if (!user || status === 'ready' || status === 'forming') return;
 
     const { data: queueEntries } = await supabase
       .from('live_queue')
@@ -108,13 +165,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     const isInBatch = queueEntries.some(e => e.user_id === user.id);
     if (!isInBatch) return;
 
-    // Only the first person in the batch creates the chat (to avoid duplicates)
-    if (queueEntries[0].user_id !== user.id) {
-      // Wait for the chat to be created, then check for it
-      return;
-    }
+    // Only the first person in the batch creates the chat
+    if (queueEntries[0].user_id !== user.id) return;
 
     try {
+      setStatus('forming');
+
       // Create spontaneous chat
       const { data: chat, error: chatError } = await supabase
         .from('chats')
@@ -126,7 +182,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         .select()
         .single();
 
-      if (chatError || !chat) return;
+      if (chatError || !chat) {
+        setStatus('queued');
+        return;
+      }
 
       // Add all batch members as participants
       const participants = queueEntries.map(e => ({
@@ -151,6 +210,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       setStatus('ready');
     } catch (err) {
       console.error('Error forming group:', err);
+      setStatus('queued');
     }
   }, [user, status]);
 
