@@ -168,17 +168,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="meetups"
-        options={{
-          title: 'Meetups',
-          tabBarIcon: ({ focused }) => (
-            <TabItem label="Meetups" active={focused} theme={C}
-              icon={<Users size={24} color={focused ? C.tertiary : `${C.onSurface}50`} />}
-            />
-          ),
-        }}
-      />
+
       <Tabs.Screen
         name="events"
         options={{

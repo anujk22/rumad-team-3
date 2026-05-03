@@ -25,6 +25,8 @@ function SwipeCard({ profile, isTop, zIndex, onSwipe, theme: C }: {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const pos = useRef(new Animated.ValueXY()).current;
   const rotate = pos.x.interpolate({ inputRange: [-SW / 2, 0, SW / 2], outputRange: ['-10deg', '0deg', '10deg'], extrapolate: 'clamp' });
+  const dealOpacity = pos.x.interpolate({ inputRange: [0, SWIPE_THRESHOLD], outputRange: [0, 1], extrapolate: 'clamp' });
+  const foldOpacity = pos.x.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [1, 0], extrapolate: 'clamp' });
 
   const pan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => isTop,
@@ -55,6 +57,21 @@ function SwipeCard({ profile, isTop, zIndex, onSwipe, theme: C }: {
           <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
             <User size={64} color={C.outline} />
           </View>
+        )}
+
+        {isTop && (
+          <>
+            <Animated.View style={{ position: 'absolute', top: 40, left: 20, transform: [{ rotate: '-15deg' }], opacity: dealOpacity, zIndex: 20 }}>
+              <View style={{ borderWidth: 4, borderColor: '#4ade80', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                <Text style={{ fontFamily: F.display, fontSize: 42, color: '#4ade80', letterSpacing: 4 }}>DEAL</Text>
+              </View>
+            </Animated.View>
+            <Animated.View style={{ position: 'absolute', top: 40, right: 20, transform: [{ rotate: '15deg' }], opacity: foldOpacity, zIndex: 20 }}>
+              <View style={{ borderWidth: 4, borderColor: '#f87171', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                <Text style={{ fontFamily: F.display, fontSize: 42, color: '#f87171', letterSpacing: 4 }}>FOLD</Text>
+              </View>
+            </Animated.View>
+          </>
         )}
 
         {/* Progress Dots */}

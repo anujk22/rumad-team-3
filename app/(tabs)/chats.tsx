@@ -326,6 +326,8 @@ export default function ChatsScreen() {
                         <MaterialCommunityIcons name="school" size={22} color={C.tertiary} />
                       ) : chat.type === 'group' && chat.metadata?.icon_emoji ? (
                         <Text style={styles.groupEmoji}>{chat.metadata.icon_emoji}</Text>
+                      ) : chat.type === 'group' ? (
+                        <Users size={22} color={C.tertiary} />
                       ) : (
                         <User size={22} color={C.outline} />
                       )}
@@ -453,7 +455,7 @@ const createStyles = (C: any) => StyleSheet.create({
   chatRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceContainerLowest, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: C.outlineAlpha },
   chatAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 14 },
   chatAvatarImg: { width: '100%', height: '100%' },
-  groupEmoji: { fontSize: 20 },
+  groupEmoji: { fontSize: 24, color: C.onSurface },
   chatInfo: { flex: 1 },
   chatTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   chatName: { fontFamily: F.bodyBold, fontSize: 16, color: C.onSurface, flex: 1, marginRight: 8 },

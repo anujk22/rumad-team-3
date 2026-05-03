@@ -5,10 +5,12 @@ import { F } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ArrowRight, GraduationCap, Search } from 'lucide-react-native';
+import { ArrowRight, GraduationCap, Search, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Polygon } from 'react-native-svg';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 
 // --- Suits config ---
 const SUITS = [
@@ -67,6 +69,49 @@ const createFanStyles = (C: any) => StyleSheet.create({
   joinLabel: { fontFamily: F.label, fontSize: 10, color: C.secondary, letterSpacing: 0.5, textTransform: 'uppercase' },
   promptText: { fontFamily: F.headlineBase, fontSize: 20, color: C.onSurface, textAlign: 'center', lineHeight: 24 },
 });
+
+const Ghosts = ({ visible, theme: C }: { visible: boolean; theme: any }) => {
+  const opacities = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  
+  useEffect(() => {
+    if (visible) {
+      const anims = opacities.map((op, i) => Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 400),
+          Animated.timing(op, { toValue: 1, duration: 1200, useNativeDriver: true }),
+          Animated.timing(op, { toValue: 0.2, duration: 1200, useNativeDriver: true }),
+        ])
+      ));
+      anims.forEach(a => a.start());
+      return () => anims.forEach(a => a.stop());
+    } else {
+      opacities.forEach(op => op.setValue(0));
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  const positions = [
+    { top: -30, left: '5%' },
+    { top: -10, right: '-5%' },
+    { bottom: -20, left: '40%' },
+    { top: 15, left: '-10%' },
+  ];
+
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {positions.map((pos, i) => (
+        <Animated.View key={i} style={[pos, { position: 'absolute', opacity: opacities[i], zIndex: 0 }]}>
+          <View style={{ overflow: 'hidden', borderRadius: 999 }}>
+            <BlurView intensity={40} tint="light" style={{ padding: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.05)' }}>
+              <User size={28} color={C.onSurfaceVariant} opacity={0.6} />
+            </BlurView>
+          </View>
+        </Animated.View>
+      ))}
+    </View>
+  );
+};
 
 export default function DiscoverScreen() {
   const { theme: C } = useTheme();
@@ -164,18 +209,21 @@ export default function DiscoverScreen() {
           <Text style={styles.mainTitle}>Discover</Text>
           <FannedCards theme={C} />
 
-          <Animated.View style={{ transform: [{ scale: dealBtnScale }], marginBottom: 12 }}>
-            <TouchableOpacity
-              style={[styles.dealBtn, status === 'queued' && styles.dealBtnQueued]}
-              activeOpacity={0.85}
-              onPress={handleDealPress}
-            >
-              <MaterialCommunityIcons name="cards-playing-outline" size={20} color={C.onPrimary} />
-              <Text style={styles.dealBtnText}>
-                {status === 'queued' ? 'Leave Queue' : 'Deal Me In'}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
+          <View style={{ position: 'relative', marginBottom: 12, zIndex: 10 }}>
+            <Ghosts visible={status === 'queued'} theme={C} />
+            <Animated.View style={{ transform: [{ scale: dealBtnScale }] }}>
+              <TouchableOpacity
+                style={[styles.dealBtn, status === 'queued' && styles.dealBtnQueued]}
+                activeOpacity={0.85}
+                onPress={handleDealPress}
+              >
+                <MaterialCommunityIcons name="cards-playing-outline" size={20} color={C.onPrimary} />
+                <Text style={styles.dealBtnText}>
+                  {status === 'queued' ? 'Leave Queue' : 'Deal Me In'}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
           <Text style={styles.dealSubtext}>
             {status === 'queued' ? 'FINDING YOUR TABLE...' : 'MATCH WITH 3–6 STUDENTS INSTANTLY'}
           </Text>

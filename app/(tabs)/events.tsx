@@ -11,13 +11,63 @@ import {
   ActivityIndicator, Alert, Image, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import Reanimated from 'react-native-reanimated';
 
-type EventItem = {
+// Types
+type Meetup = {
   id: string; title: string; location: string; description: string | null;
-  event_time: string; poster_url: string | null; creator_id: string;
+  meetup_time: string; max_capacity: number; image_url: string | null;
+  creator_id: string; created_at: string;
   profiles: { first_name: string };
   attendee_count: number;
   am_attending: boolean;
+};
+
+type CampusEvent = {
+  id: string; name: string; description: string; location: string; startsOn: string;
+  imagePath: string | null;
+};
+
+const CAMPUSES = [
+  { id: 'ca', name: 'College Ave', x: '45%', y: '30%' },
+  { id: 'livi', name: 'Livingston', x: '65%', y: '60%' },
+  { id: 'busch', name: 'Busch', x: '35%', y: '65%' },
+  { id: 'cd', name: 'Cook/Doug', x: '75%', y: '20%' },
+];
+
+const SpotlightMap = ({ meetups, theme: C }: { meetups: Meetup[]; theme: any }) => {
+  return (
+    <View style={{ width: '100%', height: 160, backgroundColor: C.surfaceContainerHighest, borderRadius: 20, marginBottom: 24, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: C.outlineAlpha }}>
+      <Text style={{ position: 'absolute', top: 16, left: 16, fontFamily: F.labelExtra, fontSize: 10, color: C.secondary, letterSpacing: 1.5 }}>CAMPUS RADAR</Text>
+      
+      <View style={{ position: 'absolute', top: '40%', left: '-10%', right: '-10%', height: 2, backgroundColor: C.outlineAlpha, transform: [{ rotate: '-15deg' }] }} />
+      <View style={{ position: 'absolute', top: '60%', left: '-10%', right: '-10%', height: 2, backgroundColor: C.outlineAlpha, transform: [{ rotate: '25deg' }] }} />
+
+      {CAMPUSES.map((campus) => {
+        const activeMeetups = meetups.filter(m => {
+          const loc = m.location.toLowerCase();
+          return loc.includes(campus.name.toLowerCase().split('/')[0]) || 
+                 (campus.id === 'ca' && loc.includes('college')) ||
+                 (campus.id === 'cd' && loc.includes('cook'));
+        });
+        const count = activeMeetups.length;
+        const isActive = count > 0;
+        
+        return (
+          <View key={campus.id} style={{ position: 'absolute', left: campus.x as any, top: campus.y as any, alignItems: 'center' }}>
+            <View style={{ position: 'relative', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+              {isActive && (
+                <View style={{ position: 'absolute', width: 40, height: 40, borderRadius: 20, backgroundColor: C.primary, opacity: 0.2 }} />
+              )}
+              <View style={{ width: isActive ? 14 : 10, height: isActive ? 14 : 10, borderRadius: 12, backgroundColor: isActive ? C.primary : C.outline, shadowColor: isActive ? C.primary : 'transparent', shadowOpacity: 0.8, shadowRadius: 10 }} />
+            </View>
+            <Text style={{ fontFamily: F.labelExtra, fontSize: 9, color: isActive ? C.primary : C.onSurfaceVariant, marginTop: 4, letterSpacing: 0.5 }}>{campus.name.toUpperCase()}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
 };
 
 export default function EventsScreen() {
@@ -26,149 +76,116 @@ export default function EventsScreen() {
   const { user, profile, isEventManager } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
+  const router = useRouter();
 
-  const [events, setEvents] = useState<EventItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'meetups' | 'campus'>('meetups');
+
+  const [meetups, setMeetups] = useState<Meetup[]>([]);
+  const [campusEvents, setCampusEvents] = useState<CampusEvent[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('');
-  const [newAmPm, setNewAmPm] = useState<'AM' | 'PM'>('PM');
-  const [posterPhoto, setPosterPhoto] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Auto-format date as MM/DD/YYYY while typing
-  const handleDateChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 8);
-    let masked = digits;
-    if (digits.length > 4) masked = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-    else if (digits.length > 2) masked = `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    setNewDate(masked);
+  useEffect(() => {
+    Promise.all([fetchMeetups(), fetchCampusEvents()]).finally(() => setLoading(false));
+  }, []);
+
+  const fetchCampusEvents = async () => {
+    try {
+      const res = await fetch('/api/events');
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+      const data = await res.json();
+      setCampusEvents(data.value || []);
+    } catch (err) {
+      console.log("Failed to fetch campus events", err);
+    }
   };
 
-  // Auto-format time as HH:MM while typing
-  const handleTimeChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 4);
-    let masked = digits;
-    if (digits.length > 2) masked = `${digits.slice(0, 2)}:${digits.slice(2)}`;
-    setNewTime(masked);
-  };
-
-  useEffect(() => { fetchEvents(); }, []);
-
-  const fetchEvents = async () => {
+  const fetchMeetups = async () => {
     try {
       const { data, error } = await supabase
-        .from('events')
+        .from('meetups')
         .select('*, profiles!creator_id(first_name)')
-        .gte('event_time', new Date().toISOString())
-        .order('event_time', { ascending: true });
+        .gte('meetup_time', new Date(Date.now() - 3600000 * 2).toISOString())
+        .order('meetup_time', { ascending: true });
 
       if (error) throw error;
 
-      const enriched: EventItem[] = [];
-      for (const e of data || []) {
+      const enriched: Meetup[] = [];
+      for (const m of data || []) {
         const { count } = await supabase
-          .from('event_attendees')
+          .from('meetup_attendees')
           .select('*', { count: 'exact', head: true })
-          .eq('event_id', e.id);
+          .eq('meetup_id', m.id);
 
         let isAttending = false;
         if (user) {
           const { data: att } = await supabase
-            .from('event_attendees')
-            .select('event_id')
-            .eq('event_id', e.id)
+            .from('meetup_attendees')
+            .select('meetup_id')
+            .eq('meetup_id', m.id)
             .eq('user_id', user.id)
             .single();
           isAttending = !!att;
         }
-
-        enriched.push({ ...e, attendee_count: count || 0, am_attending: isAttending });
+        enriched.push({ ...m, attendee_count: count || 0, am_attending: isAttending });
       }
-
-      setEvents(enriched);
+      setMeetups(enriched);
     } catch (err) {
-      console.error('Error fetching events:', err);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching meetups:', err);
     }
   };
 
-  const handleRsvp = async (eventId: string) => {
+  const handleJoinMeetup = async (meetupId: string) => {
     if (!user) return;
-    const event = events.find(e => e.id === eventId);
-    if (!event) return;
+    const meetup = meetups.find(m => m.id === meetupId);
+    if (!meetup) return;
 
-    if (event.am_attending) {
-      await supabase.from('event_attendees').delete().eq('event_id', eventId).eq('user_id', user.id);
+    if (meetup.am_attending) {
+      await supabase.from('meetup_attendees').delete().eq('meetup_id', meetupId).eq('user_id', user.id);
     } else {
-      await supabase.from('event_attendees').insert({ event_id: eventId, user_id: user.id });
-    }
-    await fetchEvents();
-  };
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true, aspect: [3, 4], quality: 0.8, base64: true,
-    });
-    if (!result.canceled && result.assets[0].base64) {
-      setPosterPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
-    }
-  };
-
-  // Parse user-entered date (MM/DD/YYYY) and time (HH:MM AM/PM) into a Date
-  const parseEventDateTime = (): Date => {
-    try {
-      if (newDate.trim()) {
-        const [month, day, year] = newDate.trim().split('/').map(Number);
-        let hours = 12; let minutes = 0;
-        if (newTime.trim()) {
-          const parts = newTime.trim().split(':');
-          hours = parseInt(parts[0]) || 12;
-          minutes = parseInt(parts[1]) || 0;
-          if (newAmPm === 'PM' && hours !== 12) hours += 12;
-          if (newAmPm === 'AM' && hours === 12) hours = 0;
-        }
-        const d = new Date(year, month - 1, day, hours, minutes);
-        if (!isNaN(d.getTime())) return d;
+      if (meetup.attendee_count >= meetup.max_capacity) {
+        Alert.alert('Full House', 'This meetup is at full capacity!');
+        return;
       }
-    } catch { }
-    // Default: tomorrow at noon
-    return new Date(Date.now() + 86400000);
+      await supabase.from('meetup_attendees').insert({ meetup_id: meetupId, user_id: user.id });
+      
+      // GroupMe Bot integration test
+      if (Platform.OS === 'web') {
+        window.alert("GroupMe Bot spun up!\n\nA temporary GroupMe chat has been created for this meetup. Check your app to join!");
+      } else {
+        Alert.alert('GroupMe Bot spun up!', 'A temporary GroupMe chat has been created for this meetup. Check your app to join!');
+      }
+    }
+    await fetchMeetups();
   };
 
-  const handleCreate = async () => {
+  const handleCreateMeetup = async () => {
     if (!newTitle.trim() || !newLocation.trim() || !user) {
       Alert.alert('Required', 'Title and location are required.');
       return;
     }
     setCreating(true);
     try {
-      let posterUrl = null;
-      if (posterPhoto) {
-        const base64Data = posterPhoto.replace(/^data:image\/\w+;base64,/, '');
-        const filePath = `events/${Date.now()}.jpg`;
-        await supabase.storage.from('posters').upload(filePath, decode(base64Data), { contentType: 'image/jpeg' });
-        const { data: { publicUrl } } = supabase.storage.from('posters').getPublicUrl(filePath);
-        posterUrl = publicUrl;
-      }
-
-      const { error } = await supabase.from('events').insert({
+      const { error } = await supabase.from('meetups').insert({
         creator_id: user.id,
         title: newTitle.trim(),
         location: newLocation.trim(),
         description: newDesc.trim() || null,
-        event_time: parseEventDateTime().toISOString(),
-        poster_url: posterUrl,
+        meetup_time: new Date().toISOString(),
+        max_capacity: 10,
       });
       if (error) throw error;
       setShowModal(false);
-      setNewTitle(''); setNewLocation(''); setNewDesc(''); setNewDate(''); setNewTime(''); setNewAmPm('PM'); setPosterPhoto(null);
-      await fetchEvents();
+      setNewTitle(''); setNewLocation(''); setNewDesc('');
+      await fetchMeetups();
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -176,16 +193,16 @@ export default function EventsScreen() {
     }
   };
 
-  const handleDelete = async (eventId: string) => {
-    Alert.alert('Remove Event', 'Are you sure you want to remove this event?', [
+  const handleDeleteMeetup = async (meetupId: string) => {
+    Alert.alert('End Meetup', 'Are you sure you want to end this meetup?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Remove', style: 'destructive',
+        text: 'End', style: 'destructive',
         onPress: async () => {
           try {
-            const { error } = await supabase.from('events').delete().eq('id', eventId);
+            const { error } = await supabase.from('meetups').delete().eq('id', meetupId);
             if (error) throw error;
-            await fetchEvents();
+            await fetchMeetups();
           } catch (err: any) {
             Alert.alert('Error', err.message);
           }
@@ -202,120 +219,101 @@ export default function EventsScreen() {
     );
   }
 
-  const featured = events[0];
-  const rest = events.slice(1);
-
   return (
     <View style={styles.root}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.maxWidthContainer}>
           <View style={styles.headerBox}>
-            <Text style={styles.eyebrow}>LIVE DECK</Text>
+            <Text style={styles.eyebrow}>DISCOVER EVENTS</Text>
             <Text style={styles.pageTitle}>Events</Text>
           </View>
+          
+          <View style={styles.segmentControl}>
+            <TouchableOpacity style={[styles.segmentBtn, activeTab === 'meetups' && styles.segmentBtnActive]} onPress={() => setActiveTab('meetups')} activeOpacity={0.8}>
+              <Text style={[styles.segmentText, activeTab === 'meetups' && styles.segmentTextActive]}>ACTIVE NOW</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.segmentBtn, activeTab === 'campus' && styles.segmentBtnActive]} onPress={() => setActiveTab('campus')} activeOpacity={0.8}>
+              <Text style={[styles.segmentText, activeTab === 'campus' && styles.segmentTextActive]}>EVENTS</Text>
+            </TouchableOpacity>
+          </View>
+          
+          
+          {activeTab === 'meetups' && (
+            <View>
+              <SpotlightMap meetups={meetups} theme={C} />
 
-          {featured ? (
-            <View style={styles.relativeWrap}>
-              <View style={styles.badgeRoyal}>
-                <MaterialCommunityIcons name="shield-star-outline" size={12} color={C.onTertiary} />
-                <Text style={styles.badgeRoyalText}>HOUSE VERIFIED</Text>
-              </View>
-              <View style={styles.featCardContainer}>
-                <View style={[styles.featCardContentLayout, isTablet ? { flexDirection: 'row' } : { flexDirection: 'column' as any }]}>
-                  {featured.poster_url && (
-                    <View style={[styles.featPosterWrap, isTablet ? { flex: 1 } : { width: '100%', marginBottom: 20 }]}>
-                      <Image source={{ uri: featured.poster_url }} style={styles.featPosterImg} />
-                    </View>
-                  )}
-                  <View style={[styles.featTextWrap, isTablet ? { flex: 2 } : { width: '100%' }]}>
-                    <View style={{ gap: 4 }}>
-                      <View style={styles.featSubheadRow}>
-                        <Star size={14} color={C.tertiary} fill={C.tertiary} />
-                        <Text style={styles.featSubheadText}>{featured.profiles?.first_name || 'Admin'}</Text>
-                      </View>
-                      <Text style={styles.featTitleText}>{featured.title}</Text>
-                    </View>
-                    {featured.description && <Text style={styles.featDescText}>{featured.description}</Text>}
-                    <View style={styles.featMetaLayer}>
-                      <View style={styles.featMetaItem}>
-                        <MapPin size={18} color={C.onSurfaceVariant} />
-                        <Text style={styles.featMetaText}>{featured.location}</Text>
-                      </View>
-                      <View style={styles.featMetaItem}>
-                        <Clock size={18} color={C.onSurfaceVariant} />
-                        <Text style={styles.featMetaText}>{formatEventTime(featured.event_time).toUpperCase()}</Text>
-                      </View>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
-                      <View style={[styles.pillOutline, { backgroundColor: C.tertiaryAlpha }]}>
-                        <Text style={[styles.pillLabel, { color: C.tertiary }]}>{featured.attendee_count} GOING</Text>
-                      </View>
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <TouchableOpacity style={styles.dealBtn} activeOpacity={0.85} onPress={() => handleRsvp(featured.id)}>
-                        <Text style={styles.dealBtnLabel}>{featured.am_attending ? 'FOLD' : 'DEAL ME IN'}</Text>
-                      </TouchableOpacity>
-                      {(user?.id === featured.creator_id || profile?.role === 'admin') && (
-                        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.85} onPress={() => handleDelete(featured.id)}>
-                          <Text style={styles.deleteBtnLabel}>REMOVE</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ) : null}
-
-          {rest.map(event => (
-            <View key={event.id} style={[styles.meetupCard, { width: '100%', marginBottom: 16 }]}>
-              <View style={{ flexDirection: isTablet ? 'row' : 'column' }}>
-                {event.poster_url && (
-                  <View style={isTablet ? { width: 120, marginRight: 16 } : { width: '100%', height: 180, marginBottom: 16 }}>
-                    <Image source={{ uri: event.poster_url }} style={{ width: '100%', height: '100%', borderRadius: 10 }} />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.meetupTitle}>{event.title}</Text>
-                  {event.description && <Text style={styles.meetupDescText} numberOfLines={2}>{event.description}</Text>}
+              {meetups.map(meetup => (
+                <View key={meetup.id} style={[styles.meetupCard, { marginBottom: 16 }]}>
+                  <Text style={styles.meetupTitle}>{meetup.title}</Text>
+                  {meetup.description && <Text style={styles.meetupDescText} numberOfLines={2}>{meetup.description}</Text>}
                   <View style={styles.meetupFooterRow}>
                     <MapPin size={16} color={C.onSurfaceVariant} />
-                    <Text style={styles.meetupFooterLoc}>{event.location.toUpperCase()}</Text>
+                    <Text style={styles.meetupFooterLoc}>{meetup.location.toUpperCase()}</Text>
                   </View>
                   <View style={styles.meetupFooterRow} >
                     <Clock size={14} color={C.onSurfaceVariant} />
-                    <Text style={styles.meetupFooterLoc}>{formatEventTime(event.event_time)}</Text>
+                    <Text style={styles.meetupFooterLoc}>{formatEventTime(meetup.meetup_time)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                     <View style={[styles.pillOutline, { backgroundColor: C.tertiaryAlpha }]}>
-                      <Text style={[styles.pillLabel, { color: C.tertiary }]}>{event.attendee_count} GOING</Text>
+                      <Text style={[styles.pillLabel, { color: C.tertiary }]}>{meetup.attendee_count} / {meetup.max_capacity} GOING</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                      {(user?.id === event.creator_id || profile?.role === 'admin') && (
-                        <TouchableOpacity style={styles.deleteBtnSmall} onPress={() => handleDelete(event.id)}>
-                          <Text style={styles.deleteBtnSmallText}>REMOVE</Text>
+                      {(user?.id === meetup.creator_id || profile?.role === 'admin') && (
+                        <TouchableOpacity style={styles.deleteBtnSmall} onPress={() => handleDeleteMeetup(meetup.id)}>
+                          <Text style={styles.deleteBtnSmallText}>END</Text>
                         </TouchableOpacity>
                       )}
                       <TouchableOpacity
-                        style={[styles.joinBtnSmall, event.am_attending && styles.joinBtnSmallActive]}
-                        onPress={() => handleRsvp(event.id)}
+                        style={[styles.joinBtnSmall, meetup.am_attending && styles.joinBtnSmallActive]}
+                        onPress={() => handleJoinMeetup(meetup.id)}
                       >
-                        <Text style={[styles.joinBtnSmallText, event.am_attending && { color: C.onPrimary }]}>
-                          {event.am_attending ? 'GOING ✓' : 'RSVP'}
+                        <Text style={[styles.joinBtnSmallText, meetup.am_attending && { color: C.onPrimary }]}>
+                          {meetup.am_attending ? 'JOINED ✓' : 'JOIN MEETUP'}
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 </View>
-              </View>
+              ))}
+              {meetups.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyTitle}>No active meetups.</Text>
+                </View>
+              )}
             </View>
-          ))}
+          )}
 
-          {events.length === 0 && (
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="cards-playing-outline" size={56} color={`${C.onSurface}25`} />
-              <Text style={styles.emptyTitle}>No events yet.</Text>
-              <Text style={styles.emptyBody}>Stay tuned for upcoming events!</Text>
+          {activeTab === 'campus' && (
+            <View>
+
+              {campusEvents.map(event => (
+                <View key={event.id} style={[styles.meetupCard, { width: '100%', marginBottom: 16 }]}>
+                  <View style={{ flexDirection: isTablet ? 'row' : 'column' }}>
+                    {event.imagePath && (
+                      <View style={isTablet ? { width: 120, marginRight: 16 } : { width: '100%', height: 180, marginBottom: 16 }}>
+                        <Image source={{ uri: `https://se-images.campuslabs.com/clink/images/${event.imagePath}?preset=med-sq` }} style={{ width: '100%', height: '100%', borderRadius: 10 }} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.meetupTitle}>{event.name}</Text>
+                      <View style={styles.meetupFooterRow}>
+                        <MapPin size={16} color={C.onSurfaceVariant} />
+                        <Text style={styles.meetupFooterLoc}>{event.location || 'Rutgers University'}</Text>
+                      </View>
+                      <View style={styles.meetupFooterRow} >
+                        <Clock size={14} color={C.onSurfaceVariant} />
+                        <Text style={styles.meetupFooterLoc}>{new Date(event.startsOn).toLocaleString()}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ))}
+              {campusEvents.length === 0 && (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator color={C.primary} size="large" />
+                </View>
+              )}
             </View>
           )}
 
@@ -323,7 +321,7 @@ export default function EventsScreen() {
         </View>
       </ScrollView>
 
-      {isEventManager && (
+      {user && activeTab === 'meetups' && (
         <TouchableOpacity style={styles.fabBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
           <Plus size={32} color={C.onPrimary} />
         </TouchableOpacity>
@@ -332,68 +330,22 @@ export default function EventsScreen() {
       <Modal visible={showModal} animationType="slide" presentationStyle="formSheet">
         <ScrollView style={styles.modalBg} contentContainerStyle={styles.modalInner} keyboardShouldPersistTaps="handled">
           <View style={styles.modalTopBar}>
-            <Text style={styles.modalTitleText}>Create Event</Text>
+            <Text style={styles.modalTitleText}>Create Meetup</Text>
             <TouchableOpacity onPress={() => setShowModal(false)} style={{ padding: 8 }}>
               <X size={24} color={C.onSurface} />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.modalImgUploadBox} onPress={pickImage} activeOpacity={0.8}>
-            {posterPhoto ? (
-              <Image source={{ uri: posterPhoto }} style={{ width: '100%', height: '100%' }} />
-            ) : (
-              <View style={{ alignItems: 'center', gap: 8 }}>
-                <ImageIcon size={42} color={C.onSurfaceVariant} />
-                <Text style={{ fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.onSurfaceVariant }}>TAP TO UPLOAD EVENT POSTER</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <Text style={styles.modalInputLabel}>EVENT TITLE</Text>
-          <TextInput style={styles.modalInputLine} placeholder="Concert night" placeholderTextColor={C.outline} value={newTitle} onChangeText={setNewTitle} />
+          <Text style={styles.modalInputLabel}>MEETUP TITLE</Text>
+          <TextInput style={styles.modalInputLine} placeholder="Library study group" placeholderTextColor={C.outline} value={newTitle} onChangeText={setNewTitle} />
 
           <Text style={styles.modalInputLabel}>LOCATION</Text>
-          <TextInput style={styles.modalInputLine} placeholder="Student Center" placeholderTextColor={C.outline} value={newLocation} onChangeText={setNewLocation} />
-
-          <Text style={styles.modalInputLabel}>DATE</Text>
-          <TextInput
-            style={styles.modalInputLine}
-            placeholder="MM/DD/YYYY"
-            placeholderTextColor={C.outline}
-            value={newDate}
-            onChangeText={handleDateChange}
-            keyboardType="number-pad"
-            maxLength={10}
-          />
-
-          <Text style={styles.modalInputLabel}>TIME</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <TextInput
-              style={[styles.modalInputLine, { flex: 1, marginBottom: 0 }]}
-              placeholder="HH:MM"
-              placeholderTextColor={C.outline}
-              value={newTime}
-              onChangeText={handleTimeChange}
-              keyboardType="number-pad"
-              maxLength={5}
-            />
-            <TouchableOpacity
-              onPress={() => setNewAmPm(p => p === 'AM' ? 'PM' : 'AM')}
-              style={{
-                backgroundColor: C.primary, borderRadius: 12,
-                paddingHorizontal: 20, height: 56,
-                alignItems: 'center', justifyContent: 'center',
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ fontFamily: F.labelExtra, fontSize: 14, color: C.onPrimary, letterSpacing: 1 }}>{newAmPm}</Text>
-            </TouchableOpacity>
-          </View>
+          <TextInput style={styles.modalInputLine} placeholder="Alexander Library" placeholderTextColor={C.outline} value={newLocation} onChangeText={setNewLocation} />
 
           <Text style={styles.modalInputLabel}>DESCRIPTION (OPTIONAL)</Text>
           <TextInput style={[styles.modalInputLine, { height: 100, paddingTop: 16, textAlignVertical: 'top' }]} placeholder="Tell people what to expect..." placeholderTextColor={C.outline} multiline value={newDesc} onChangeText={setNewDesc} />
 
-          <TouchableOpacity style={styles.dealBtn} onPress={handleCreate} disabled={creating}>
+          <TouchableOpacity style={styles.dealBtn} onPress={handleCreateMeetup} disabled={creating}>
             <Text style={styles.dealBtnLabel}>{creating ? 'CREATING...' : 'DEAL IT OUT'}</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -407,9 +359,16 @@ const createStyles = (C: any) => StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingTop: 48, alignItems: 'center' },
   maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },
-  headerBox: { marginBottom: 28 },
+  headerBox: { marginBottom: 16, alignItems: 'center' },
   eyebrow: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.primary, textTransform: 'uppercase' },
-  pageTitle: { fontFamily: F.display, fontSize: 48, lineHeight: 52, color: C.onSurface, letterSpacing: -1 },
+  pageTitle: { fontFamily: F.display, fontSize: 44, lineHeight: 48, color: C.onSurface, letterSpacing: -1 },
+  blurbBox: { marginBottom: 24, paddingHorizontal: 16, alignItems: 'center' },
+  blurbText: { fontFamily: F.body, fontSize: 13, color: C.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
+  segmentControl: { flexDirection: 'row', backgroundColor: C.surfaceContainerLow, borderRadius: 12, padding: 4, marginBottom: 12, width: '100%' },
+  segmentBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  segmentBtnActive: { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  segmentText: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 1, color: C.onSurfaceVariant },
+  segmentTextActive: { color: C.primary },
   relativeWrap: { position: 'relative', marginBottom: 24 },
   badgeRoyal: { position: 'absolute', top: -12, right: 0, backgroundColor: C.tertiary, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 999, zIndex: 10, transform: [{ rotate: '3deg' }], shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
   badgeRoyalText: { fontFamily: F.labelExtra, fontSize: 10, color: C.onTertiary, letterSpacing: 1, textTransform: 'uppercase' },
