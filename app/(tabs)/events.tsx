@@ -87,8 +87,10 @@ export default function EventsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newLocation, setNewLocation] = useState('');
+  const [newCampus, setNewCampus] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editMeetupId, setEditMeetupId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([fetchMeetups(), fetchCampusEvents()]).finally(() => setLoading(false));
@@ -167,24 +169,56 @@ export default function EventsScreen() {
     await fetchMeetups();
   };
 
-  const handleCreateMeetup = async () => {
+  const openEditModal = (meetup: Meetup) => {
+    setEditMeetupId(meetup.id);
+    setNewTitle(meetup.title);
+    
+    // Attempt to extract campus from location string like "Library (College Ave)"
+    let loc = meetup.location;
+    let foundCampus = '';
+    for (const c of CAMPUSES) {
+      if (loc.includes(`(${c.name})`)) {
+        foundCampus = c.name;
+        loc = loc.replace(`(${c.name})`, '').trim();
+        break;
+      }
+    }
+    setNewCampus(foundCampus);
+    setNewLocation(loc);
+    setNewDesc(meetup.description || '');
+    setShowModal(true);
+  };
+
+  const handleSaveMeetup = async () => {
     if (!newTitle.trim() || !newLocation.trim() || !user) {
       Alert.alert('Required', 'Title and location are required.');
       return;
     }
     setCreating(true);
     try {
-      const { error } = await supabase.from('meetups').insert({
-        creator_id: user.id,
-        title: newTitle.trim(),
-        location: newLocation.trim(),
-        description: newDesc.trim() || null,
-        meetup_time: new Date().toISOString(),
-        max_capacity: 10,
-      });
-      if (error) throw error;
+      const finalLocation = newCampus ? `${newLocation.trim()} (${newCampus})` : newLocation.trim();
+      
+      if (editMeetupId) {
+        const { error } = await supabase.from('meetups').update({
+          title: newTitle.trim(),
+          location: finalLocation,
+          description: newDesc.trim() || null,
+        }).eq('id', editMeetupId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('meetups').insert({
+          creator_id: user.id,
+          title: newTitle.trim(),
+          location: finalLocation,
+          description: newDesc.trim() || null,
+          meetup_time: new Date().toISOString(),
+          max_capacity: 10,
+        });
+        if (error) throw error;
+      }
+      
       setShowModal(false);
-      setNewTitle(''); setNewLocation(''); setNewDesc('');
+      setNewTitle(''); setNewLocation(''); setNewCampus(''); setNewDesc(''); setEditMeetupId(null);
       await fetchMeetups();
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -194,21 +228,27 @@ export default function EventsScreen() {
   };
 
   const handleDeleteMeetup = async (meetupId: string) => {
-    Alert.alert('End Meetup', 'Are you sure you want to end this meetup?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'End', style: 'destructive',
-        onPress: async () => {
-          try {
-            const { error } = await supabase.from('meetups').delete().eq('id', meetupId);
-            if (error) throw error;
-            await fetchMeetups();
-          } catch (err: any) {
-            Alert.alert('Error', err.message);
-          }
-        },
-      },
-    ]);
+    const performDelete = async () => {
+      try {
+        const { error } = await supabase.from('meetups').delete().eq('id', meetupId);
+        if (error) throw error;
+        await fetchMeetups();
+      } catch (err: any) {
+        Alert.alert('Error', err.message);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to end this meetup?');
+      if (confirmed) {
+        performDelete();
+      }
+    } else {
+      Alert.alert('End Meetup', 'Are you sure you want to end this meetup?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'End', style: 'destructive', onPress: performDelete },
+      ]);
+    }
   };
 
   if (loading) {
@@ -260,9 +300,14 @@ export default function EventsScreen() {
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       {(user?.id === meetup.creator_id || profile?.role === 'admin') && (
-                        <TouchableOpacity style={styles.deleteBtnSmall} onPress={() => handleDeleteMeetup(meetup.id)}>
-                          <Text style={styles.deleteBtnSmallText}>END</Text>
-                        </TouchableOpacity>
+                        <>
+                          <TouchableOpacity style={styles.deleteBtnSmall} onPress={() => openEditModal(meetup)}>
+                            <Text style={styles.deleteBtnSmallText}>EDIT</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.deleteBtnSmall} onPress={() => handleDeleteMeetup(meetup.id)}>
+                            <Text style={styles.deleteBtnSmallText}>END</Text>
+                          </TouchableOpacity>
+                        </>
                       )}
                       <TouchableOpacity
                         style={[styles.joinBtnSmall, meetup.am_attending && styles.joinBtnSmallActive]}
@@ -322,7 +367,7 @@ export default function EventsScreen() {
       </ScrollView>
 
       {user && activeTab === 'meetups' && (
-        <TouchableOpacity style={styles.fabBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.fabBtn} onPress={() => { setEditMeetupId(null); setNewTitle(''); setNewLocation(''); setNewCampus(''); setNewDesc(''); setShowModal(true); }} activeOpacity={0.85}>
           <Plus size={32} color={C.onPrimary} />
         </TouchableOpacity>
       )}
@@ -330,7 +375,7 @@ export default function EventsScreen() {
       <Modal visible={showModal} animationType="slide" presentationStyle="formSheet">
         <ScrollView style={styles.modalBg} contentContainerStyle={styles.modalInner} keyboardShouldPersistTaps="handled">
           <View style={styles.modalTopBar}>
-            <Text style={styles.modalTitleText}>Create Meetup</Text>
+            <Text style={styles.modalTitleText}>{editMeetupId ? 'Edit Meetup' : 'Create Meetup'}</Text>
             <TouchableOpacity onPress={() => setShowModal(false)} style={{ padding: 8 }}>
               <X size={24} color={C.onSurface} />
             </TouchableOpacity>
@@ -339,14 +384,23 @@ export default function EventsScreen() {
           <Text style={styles.modalInputLabel}>MEETUP TITLE</Text>
           <TextInput style={styles.modalInputLine} placeholder="Library study group" placeholderTextColor={C.outline} value={newTitle} onChangeText={setNewTitle} />
 
-          <Text style={styles.modalInputLabel}>LOCATION</Text>
+          <Text style={styles.modalInputLabel}>CAMPUS (OPTIONAL)</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+            {CAMPUSES.map(c => (
+              <TouchableOpacity key={c.id} style={[styles.pillOutline, { borderWidth: 1.5, borderColor: C.outlineAlpha }, newCampus === c.name && { backgroundColor: C.primary, borderColor: C.primary }]} onPress={() => setNewCampus(c.name === newCampus ? '' : c.name)}>
+                <Text style={[styles.pillLabel, { color: C.onSurfaceVariant }, newCampus === c.name && { color: C.onPrimary }]}>{c.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.modalInputLabel}>SPECIFIC LOCATION</Text>
           <TextInput style={styles.modalInputLine} placeholder="Alexander Library" placeholderTextColor={C.outline} value={newLocation} onChangeText={setNewLocation} />
 
           <Text style={styles.modalInputLabel}>DESCRIPTION (OPTIONAL)</Text>
           <TextInput style={[styles.modalInputLine, { height: 100, paddingTop: 16, textAlignVertical: 'top' }]} placeholder="Tell people what to expect..." placeholderTextColor={C.outline} multiline value={newDesc} onChangeText={setNewDesc} />
 
-          <TouchableOpacity style={styles.dealBtn} onPress={handleCreateMeetup} disabled={creating}>
-            <Text style={styles.dealBtnLabel}>{creating ? 'CREATING...' : 'DEAL IT OUT'}</Text>
+          <TouchableOpacity style={styles.dealBtn} onPress={handleSaveMeetup} disabled={creating}>
+            <Text style={styles.dealBtnLabel}>{creating ? 'SAVING...' : editMeetupId ? 'SAVE CHANGES' : 'DEAL IT OUT'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </Modal>
