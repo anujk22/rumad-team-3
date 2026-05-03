@@ -7,6 +7,9 @@ import { useRouter } from 'expo-router';
 import { Heart, User, Users, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SW } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SW * 0.28;
@@ -79,8 +82,12 @@ function SwipeCard({ profile, isTop, zIndex, onSwipe, theme: C }: {
           </View>
         )}
 
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', zIndex: 9 }}>
+          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFillObject} />
+        </View>
+
         <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, zIndex: 10 }}>
-          <Text style={{ fontFamily: F.display, fontSize: 34, color: '#ffffff', lineHeight: 38, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{profile.first_name}, {profile.age}</Text>
+          <Text style={{ fontFamily: F.display, fontSize: 38, color: '#ffffff', lineHeight: 42, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{profile.first_name}, {profile.age}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
             {profile.academic_year ? (
               <View style={{ backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 }}>
@@ -178,6 +185,7 @@ export default function SwipeScreen() {
   };
 
   const handleSwipe = async (cardIdx: number, dir: 'left' | 'right') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const swiped = profiles[cardIdx];
     if (!swiped || !user) { setTopIndex(prev => prev + 1); return; }
 
@@ -208,6 +216,7 @@ export default function SwipeScreen() {
             { chat_id: chat.id, user_id: user.id },
             { chat_id: chat.id, user_id: swiped.id },
           ]);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setMatchName(swiped.first_name);
           setMatchChatId(chat.id);
         }
@@ -277,6 +286,7 @@ export default function SwipeScreen() {
 
       {matchName && (
         <Animated.View style={[styles.matchBanner, { opacity: pulse }]}>
+          <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
           <TouchableOpacity style={styles.matchBannerInner} onPress={() => { setMatchName(null); if (matchChatId) router.push(`/chat/${matchChatId}` as any); }} activeOpacity={0.9}>
             <View style={{ flex: 1 }}>
               <Text style={styles.matchTitle}>IT'S A FULL HOUSE</Text>
@@ -299,17 +309,17 @@ const createStyles = (C: any) => StyleSheet.create({
   modeBtnActiveFriends: { backgroundColor: '#3b82f6' },
   modeBtnLabel: { fontFamily: F.label, fontSize: 11, letterSpacing: 2, color: C.onSurfaceVariant, paddingTop: 1 },
   modeBtnLabelActive: { color: C.onPrimary },
-  deckWrapperBounds: { width: '100%', flex: 1, maxHeight: 520, marginBottom: 16, alignItems: 'center', justifyContent: 'center' },
+  deckWrapperBounds: { width: '100%', flex: 1, marginBottom: 24, alignItems: 'center', justifyContent: 'center' },
   deckWrapper: { width: '100%', height: '100%', position: 'relative', maxWidth: 400 },
   stackCardShadow: { position: 'absolute', width: '98%', height: '100%', left: '1%', top: 10, backgroundColor: C.surfaceContainerLowest, borderRadius: 24, borderWidth: 1, borderColor: C.outlineAlpha, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 4, zIndex: 1 },
   emptyState: { alignItems: 'center', gap: 12, marginTop: '50%' },
   emptyTitle: { fontFamily: F.display, fontSize: 26, color: C.onSurface, letterSpacing: -0.5 },
   reshuffleBtn: { backgroundColor: C.primary, paddingHorizontal: 28, paddingVertical: 16, borderRadius: 999, marginTop: 4 },
   reshuffleBtnText: { fontFamily: F.label, color: C.onPrimary, letterSpacing: 2, fontSize: 11 },
-  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 16 },
-  actionBtnWhite: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.surfaceContainerLowest, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
-  actionBtnPrimary: { width: 68, height: 68, borderRadius: 34, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 8 },
-  matchBanner: { width: '100%', borderRadius: 20, backgroundColor: C.surfaceContainerHigh, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginTop: 8 },
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, marginBottom: 32 },
+  actionBtnWhite: { width: 72, height: 72, borderRadius: 36, backgroundColor: C.surfaceContainerLowest, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4 },
+  actionBtnPrimary: { width: 84, height: 84, borderRadius: 42, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 },
+  matchBanner: { width: '100%', borderRadius: 20, backgroundColor: 'rgba(252, 249, 248, 0.7)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginTop: 8 },
   matchBannerInner: { flexDirection: 'row', alignItems: 'center', padding: 18 },
   matchTitle: { fontFamily: F.label, fontSize: 9, letterSpacing: 1.5, color: C.tertiary, textTransform: 'uppercase' },
   matchBody: { fontFamily: F.body, fontSize: 13, color: C.onSurface, marginTop: 2 },

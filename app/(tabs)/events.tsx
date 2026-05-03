@@ -405,7 +405,7 @@ export default function EventsScreen() {
 const createStyles = (C: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingTop: 8, alignItems: 'center' },
+  scrollContent: { padding: 16, paddingTop: 48, alignItems: 'center' },
   maxWidthContainer: { width: '100%', maxWidth: 672, flex: 1 },
   headerBox: { marginBottom: 28 },
   eyebrow: { fontFamily: F.labelExtra, fontSize: 10, letterSpacing: 2, color: C.primary, textTransform: 'uppercase' },
