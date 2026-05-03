@@ -281,6 +281,12 @@ export default function EventsScreen() {
           {activeTab === 'meetups' && (
             <View>
               <SpotlightMap meetups={meetups} theme={C} />
+              
+              <View style={[styles.blurbBox, { marginTop: -8, marginBottom: 24 }]}>
+                <Text style={styles.blurbText}>
+                  Drop in on live, impromptu meetups happening around campus right now.
+                </Text>
+              </View>
 
               {meetups.map(meetup => (
                 <View key={meetup.id} style={[styles.meetupCard, { marginBottom: 16 }]}>
